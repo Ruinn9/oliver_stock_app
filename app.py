@@ -1,23 +1,23 @@
-from __future__ import annotations
-
 """OLIVER LESO | Equity Research Studio
 
 Streamlit stock screener and portfolio risk dashboard using Yahoo Finance data.
 Educational tool only; it is not investment advice.
 """
+from __future__ import annotations
 
-
-from typing import Any
+import json
 import uuid
 import html
 import re
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
+from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import timezone
+from typing import Any
 
+import extra_streamlit_components as stx
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -239,6 +239,26 @@ def is_valid_ticker(ticker: str) -> bool:
         return hist is not None and not hist.empty and "Close" in hist.columns
     except Exception:
         return False
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def search_yahoo(query: str) -> list[dict[str, str]]:
+    """Vyhľadá firmy a ETF na Yahoo Finance podľa názvu alebo symbolu."""
+    try:
+        quotes = yf.Search(query, max_results=8).quotes or []
+    except Exception:
+        return []
+    results: list[dict[str, str]] = []
+    for quote in quotes:
+        symbol = quote.get("symbol")
+        if not symbol:
+            continue
+        results.append({
+            "symbol": symbol,
+            "name": quote.get("shortname") or quote.get("longname") or symbol,
+            "exchange": quote.get("exchDisp") or quote.get("exchange") or "",
+        })
+    return results
 
 
 # -----------------------------------------------------------------------------
@@ -695,6 +715,24 @@ TICKER_PRESETS = {
     "Dividendové a defenzívne": ["KO", "PEP", "WMT", "COST", "XOM", "CVX", "V", "JPM", "VOO", "VT"],
 }
 
+# --- Watchlist persistence (per browser, via cookie) -------------------------
+WATCHLIST_COOKIE = "oliver_watchlist"
+cookie_manager = stx.CookieManager(key="watchlist_cookies")
+
+if "watchlist_restored" not in st.session_state:
+    # Cookie sa po prvom behu prehliadača doručí až pri ďalšom rerune, preto krátke čakanie.
+    saved_raw = cookie_manager.get(WATCHLIST_COOKIE)
+    if saved_raw is None and st.session_state.get("_cookie_wait", 0) < 2:
+        st.session_state["_cookie_wait"] = st.session_state.get("_cookie_wait", 0) + 1
+        st.rerun()
+    if saved_raw:
+        try:
+            restored = [s for s in json.loads(saved_raw) if isinstance(s, str)]
+            st.session_state["ticker_selection"] = restored[:MAX_TICKERS]
+        except (ValueError, TypeError):
+            pass  # poškodená cookie: ostanú predvolené tickery
+    st.session_state["watchlist_restored"] = True
+
 if "_market_data_refresh_key" not in st.session_state:
     st.session_state["_market_data_refresh_key"] = uuid.uuid4().hex
 if "ticker_selection" not in st.session_state:
@@ -723,6 +761,15 @@ def add_custom_tickers() -> None:
     st.session_state["ticker_selection"] = current + added
     st.session_state["custom_ticker_box"] = ""
     st.session_state["_ticker_feedback"] = {"added": added, "rejected": rejected}
+
+
+def add_searched_ticker(symbol: str) -> None:
+    """Callback: add a ticker picked from the name search and clear the search box."""
+    current = list(st.session_state.get("ticker_selection", []))
+    if symbol not in current and len(current) < MAX_TICKERS:
+        current.append(symbol)
+        st.session_state["ticker_selection"] = current
+    st.session_state["search_text"] = ""
 
 
 def remove_all_tickers() -> None:
@@ -754,7 +801,26 @@ if feedback:
     if feedback["rejected"]:
         st.sidebar.error("Nenašli sa dáta pre: " + ", ".join(feedback["rejected"]))
 
-st.sidebar.markdown("#### 2 · Rýchly predvýber")
+st.sidebar.markdown("#### 2 · Hľadať podľa názvu")
+st.sidebar.caption("Napíš názov firmy alebo ETF, napríklad „Siemens“ alebo „MSCI World“, a vyber výsledok.")
+search_text = st.sidebar.text_input("Hľadaný názov", key="search_text", placeholder="napr. Siemens")
+if search_text.strip():
+    hits = search_yahoo(search_text.strip())
+    if not hits:
+        st.sidebar.caption("Nič sa nenašlo. Skús iný názov alebo zadaj symbol priamo v poli vyššie.")
+    for hit in hits:
+        label = f"{hit['symbol']} · {hit['name']}"
+        if hit["exchange"]:
+            label += f" ({hit['exchange']})"
+        st.sidebar.button(
+            f"➕ {label}",
+            key=f"add_{hit['symbol']}",
+            use_container_width=True,
+            on_click=add_searched_ticker,
+            args=(hit["symbol"],),
+        )
+
+st.sidebar.markdown("#### 3 · Rýchly predvýber")
 preset_choice = st.sidebar.selectbox("Predvýber", list(TICKER_PRESETS.keys()), index=0,
                                      help="Predvýber nahradí aktuálny zoznam tickerov.")
 if st.sidebar.button("Použiť predvýber", use_container_width=True):
@@ -762,7 +828,7 @@ if st.sidebar.button("Použiť predvýber", use_container_width=True):
     st.session_state["_ticker_feedback"] = None
     st.rerun()
 
-st.sidebar.markdown("#### 3 · Pridaj celý sektor")
+st.sidebar.markdown("#### 4 · Pridaj celý sektor")
 sector_watchlist = st.sidebar.multiselect(
     "Sektory na pridanie do zoznamu",
     options=list(SECTOR_TICKERS.keys()),
@@ -779,7 +845,7 @@ if st.sidebar.button("Pridať tickery z vybraných sektorov", use_container_widt
         st.session_state["ticker_selection"] = combined
         st.rerun()
 
-st.sidebar.markdown("#### 4 · Aktuálny watchlist")
+st.sidebar.markdown("#### 5 · Aktuálny watchlist")
 selection_options = list(dict.fromkeys(TICKER_UNIVERSE + st.session_state.get("ticker_selection", [])))
 selected_tickers = st.sidebar.multiselect(
     "Sledované akcie / ETF",
@@ -796,6 +862,18 @@ if len(tickers) > MAX_TICKERS:
     st.sidebar.warning(f"Pre rýchlejšie načítanie je limit {MAX_TICKERS} tickerov. Použije sa prvých {MAX_TICKERS}.")
     tickers = tickers[:MAX_TICKERS]
 st.sidebar.caption(f"Aktuálny výber: **{len(tickers)} tickerov** · výber platí pre prehľad, screener, grafy, portfólio a SWOT.")
+
+# Uloženie watchlistu do cookie len po dokončení obnovenia (inak by sa prepísal predvolenými hodnotami).
+if st.session_state.get("watchlist_restored"):
+    current_json = json.dumps(tickers)
+    if st.session_state.get("_last_saved_watchlist") != current_json:
+        cookie_manager.set(
+            WATCHLIST_COOKIE,
+            current_json,
+            expires_at=datetime.now() + timedelta(days=365),
+            key="save_watchlist",
+        )
+        st.session_state["_last_saved_watchlist"] = current_json
 
 st.sidebar.markdown("#### Nastavenia modelu")
 period = st.sidebar.selectbox("Historické obdobie", ["1y", "2y", "5y", "10y", "max"], index=1,
