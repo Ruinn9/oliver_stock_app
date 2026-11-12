@@ -1,5 +1,6 @@
-streamlit>=1.40
-pandas>=2.0
-numpy>=1.26
-plotly>=5.20
+streamlit
 yfinance>=0.2.50
+pandas
+numpy
+plotly
+extra-streamlit-components
