@@ -46,6 +46,7 @@ ACCENT_2 = "#8CA8FF"
 GOLD = "#FFC66D"
 RED = "#FF758F"
 MAX_TICKERS = 35
+MAX_COMPARE = 4
 
 st.markdown(
     f"""
@@ -145,13 +146,6 @@ def fmt_num(value: Any, decimals: int = 2) -> str:
     return "—" if not np.isfinite(value) else f"{value:,.{decimals}f}"
 
 
-def fmt_money(value: Any, currency: str = "USD") -> str:
-    value = as_float(value)
-    if not np.isfinite(value):
-        return "—"
-    return f"{value:,.2f} {currency}"
-
-
 def pretty_large(value: Any) -> str:
     value = as_float(value)
     if not np.isfinite(value):
@@ -176,8 +170,8 @@ def make_plotly_dark(fig: go.Figure, height: int = 430) -> go.Figure:
         plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color=TEXT, family="Manrope, sans-serif"),
         height=height,
-        margin=dict(l=12, r=12, t=50, b=12),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+        margin=dict(l=12, r=12, t=60, b=80),
+        legend=dict(orientation="h", yanchor="top", y=-0.18, xanchor="left", x=0),
         hoverlabel=dict(bgcolor=PANEL_2, font_color=TEXT),
     )
     fig.update_xaxes(showgrid=False, zeroline=False, linecolor=BORDER, tickfont=dict(color=MUTED))
@@ -222,6 +216,13 @@ YAHOO_SECTOR_ALIASES = {
     "Basic Materials": "Materials",
 }
 
+# Burzové prípony Yahoo Finance. Používajú sa, keď používateľ zadá holý symbol
+# (napr. SAP alebo SIE), ktorý sa na Yahoo nenašiel.
+EXCHANGE_SUFFIXES = [
+    ".DE", ".AS", ".PA", ".L", ".MI", ".MC", ".SW", ".ST", ".OL", ".CO",
+    ".HE", ".BR", ".VI", ".LS", ".WA", ".PR", ".KS", ".T", ".HK", ".TO", ".AX",
+]
+
 
 def canonical_sector(raw_sector: Any, ticker: str = "") -> str:
     raw = str(raw_sector or "").strip()
@@ -245,6 +246,26 @@ def is_valid_ticker(ticker: str) -> bool:
         return hist is not None and not hist.empty and "Close" in hist.columns
     except Exception:
         return False
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def resolve_symbol(symbol: str) -> str | None:
+    """Vráti prvý symbol, ktorý má cenovú históriu.
+
+    Ak používateľ zadá holý symbol bez prípony, skúsi aj burzové prípony.
+    Pozor: holý symbol môže existovať v USA (napr. SAP je aj americký ADR),
+    preto sa použije prvý nájdený. Európsku burzu vyberieš zadaním prípony, napr. SAP.DE.
+    """
+    symbol = symbol.strip().upper()
+    if not symbol:
+        return None
+    candidates = [symbol]
+    if not any(marker in symbol for marker in (".", "^", "=")):
+        candidates += [symbol + suffix for suffix in EXCHANGE_SUFFIXES]
+    for candidate in candidates:
+        if is_valid_ticker(candidate):
+            return candidate
+    return None
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
@@ -745,25 +766,28 @@ if "ticker_selection" not in st.session_state:
     st.session_state["ticker_selection"] = DEFAULT_TICKERS.copy()
 if "_ticker_feedback" not in st.session_state:
     st.session_state["_ticker_feedback"] = None
+if "compare_list" not in st.session_state:
+    st.session_state["compare_list"] = ["AAPL", "MSFT"]
 
 
 def add_custom_tickers() -> None:
-    """Callback: validate typed symbols against Yahoo Finance and add valid ones to the watchlist."""
+    """Callback: resolve typed symbols (incl. EU suffixes) and add valid ones to the watchlist."""
     raw = st.session_state.get("custom_ticker_box", "")
     symbols = parse_symbols(raw)
     current = list(st.session_state.get("ticker_selection", []))
     added: list[str] = []
     rejected: list[str] = []
     for symbol in symbols:
-        if symbol in current or symbol in added:
+        resolved = resolve_symbol(symbol)
+        if resolved is None:
+            rejected.append(symbol)
+            continue
+        if resolved in current or resolved in added:
             continue
         if len(current) + len(added) >= MAX_TICKERS:
             rejected.append(f"{symbol} (limit {MAX_TICKERS})")
             continue
-        if is_valid_ticker(symbol):
-            added.append(symbol)
-        else:
-            rejected.append(symbol)
+        added.append(resolved)
     st.session_state["ticker_selection"] = current + added
     st.session_state["custom_ticker_box"] = ""
     st.session_state["_ticker_feedback"] = {"added": added, "rejected": rejected}
@@ -783,18 +807,45 @@ def remove_all_tickers() -> None:
     st.session_state["_ticker_feedback"] = None
 
 
+def add_compare(symbol: str) -> None:
+    """Callback: add a firm to the comparison tab (can be outside the watchlist)."""
+    current = list(st.session_state.get("compare_list", []))
+    if symbol not in current and len(current) < MAX_COMPARE:
+        current.append(symbol)
+        st.session_state["compare_list"] = current
+    st.session_state["compare_search"] = ""
+    st.session_state["compare_symbol"] = ""
+    st.session_state["compare_error"] = None
+
+
+def add_compare_symbol() -> None:
+    """Callback: resolve a typed symbol (e.g. SAP.DE or SAP) and add it to the comparison."""
+    raw = str(st.session_state.get("compare_symbol", "")).strip()
+    if not raw:
+        return
+    resolved = resolve_symbol(raw)
+    if resolved:
+        add_compare(resolved)
+    else:
+        st.session_state["compare_symbol"] = ""
+        st.session_state["compare_error"] = raw
+
+
 # -----------------------------------------------------------------------------
-# Sidebar controls (rozbaľovacie sekcie)
+# Sidebar controls
 # -----------------------------------------------------------------------------
 st.sidebar.markdown("<div class='eyebrow'>Equity Research Studio</div>", unsafe_allow_html=True)
 st.sidebar.title("Nastavenie analýzy")
 
 with st.sidebar.expander("➕ Pridať ticker", expanded=False):
-    st.caption("Zadaj symbol z Yahoo Finance (napr. `NET`, `ASML`, `SAP.DE`, `CSPX.L`). Viac symbolov oddeľ čiarkou alebo medzerou.")
+    st.caption(
+        "Zadaj symbol z Yahoo Finance, napr. `NET`, `CSPX.L`. Holý európsky symbol "
+        "(napr. `SIE`) sa skúsi s burzovými príponami automaticky. Na presnú burzu použi príponu, napr. `SAP.DE`."
+    )
     st.text_input(
         "Ticker(y) na pridanie",
         key="custom_ticker_box",
-        placeholder="Napr. NET, ASML, SAP.DE",
+        placeholder="Napr. NET, SAP.DE, SIE",
         on_change=add_custom_tickers,
     )
     st.button("Pridať ticker(y)", use_container_width=True, on_click=add_custom_tickers)
@@ -825,28 +876,30 @@ with st.sidebar.expander("🔎 Hľadať podľa názvu", expanded=False):
                 args=(hit["symbol"],),
             )
 
-with st.sidebar.expander("📚 Predvýbery a sektory", expanded=False):
-    preset_choice = st.selectbox("Predvýber", list(TICKER_PRESETS.keys()), index=0,
-                                 help="Predvýber nahradí aktuálny zoznam tickerov.")
-    if st.button("Použiť predvýber", use_container_width=True):
-        st.session_state["ticker_selection"] = TICKER_PRESETS[preset_choice].copy()
-        st.session_state["_ticker_feedback"] = None
+st.sidebar.markdown("#### Predvýbery")
+preset_choice = st.sidebar.selectbox("Predvýber", list(TICKER_PRESETS.keys()), index=0,
+                                     help="Predvýber nahradí aktuálny zoznam tickerov.")
+if st.sidebar.button("Použiť predvýber", use_container_width=True):
+    st.session_state["ticker_selection"] = TICKER_PRESETS[preset_choice].copy()
+    st.session_state["_ticker_feedback"] = None
+    st.rerun()
+
+st.sidebar.markdown("#### Pridať sektor")
+sector_watchlist = st.sidebar.multiselect(
+    "Sektory na pridanie",
+    options=list(SECTOR_TICKERS.keys()),
+    key="sector_watchlist_picker",
+    help="Pridá pripravenú skupinu sledovaných tickerov v zvolených sektoroch.",
+)
+if st.sidebar.button("Pridať tickery z vybraných sektorov", use_container_width=True):
+    current = list(st.session_state.get("ticker_selection", []))
+    additions = [ticker for sector in sector_watchlist for ticker in SECTOR_TICKERS.get(sector, [])]
+    combined = list(dict.fromkeys(current + additions))
+    if len(combined) > MAX_TICKERS:
+        st.sidebar.warning(f"Výber by mal {len(combined)} tickerov. Limit je {MAX_TICKERS}; vyber menej sektorov.")
+    else:
+        st.session_state["ticker_selection"] = combined
         st.rerun()
-    sector_watchlist = st.multiselect(
-        "Sektory na pridanie",
-        options=list(SECTOR_TICKERS.keys()),
-        key="sector_watchlist_picker",
-        help="Pridá pripravenú skupinu sledovaných tickerov v zvolených sektoroch.",
-    )
-    if st.button("Pridať tickery z vybraných sektorov", use_container_width=True):
-        current = list(st.session_state.get("ticker_selection", []))
-        additions = [ticker for sector in sector_watchlist for ticker in SECTOR_TICKERS.get(sector, [])]
-        combined = list(dict.fromkeys(current + additions))
-        if len(combined) > MAX_TICKERS:
-            st.warning(f"Výber by mal {len(combined)} tickerov. Limit je {MAX_TICKERS}; vyber menej sektorov.")
-        else:
-            st.session_state["ticker_selection"] = combined
-            st.rerun()
 
 st.sidebar.markdown("#### Aktuálny watchlist")
 selection_options = list(dict.fromkeys(TICKER_UNIVERSE + st.session_state.get("ticker_selection", [])))
@@ -910,7 +963,7 @@ if not tickers:
         <div class='brand'>Equity Research <span>Studio</span></div></div></div>""",
         unsafe_allow_html=True,
     )
-    st.info("Watchlist je prázdny. V ľavom paneli pridaj aspoň jeden ticker, napríklad NET, AAPL alebo SPY.")
+    st.info("Watchlist je prázdny. V ľavom paneli pridaj aspoň jeden ticker, napríklad NET, AAPL alebo SAP.DE.")
     st.stop()
 
 # -----------------------------------------------------------------------------
@@ -1084,8 +1137,8 @@ with st.expander(f"📰 Správy z watchlistu ({news_count})", expanded=False):
 # -----------------------------------------------------------------------------
 # 3. Detailné záložky
 # -----------------------------------------------------------------------------
-tab_charts, tab_screener, tab_portfolio, tab_fundamentals, tab_swot, tab_glossary = st.tabs(
-    ["↗ Grafy & technika", "⌕ Screener", "⛨ Portfólio & riziko", "▤ Fundamenty", "◩ SWOT", "ⓘ Slovník"]
+tab_charts, tab_screener, tab_compare, tab_portfolio, tab_fundamentals, tab_swot, tab_glossary = st.tabs(
+    ["↗ Grafy & technika", "⌕ Screener", "🆚 Porovnanie", "⛨ Portfólio & riziko", "▤ Fundamenty", "◩ SWOT", "ⓘ Slovník"]
 )
 
 # -----------------------------------------------------------------------------
@@ -1103,6 +1156,9 @@ with tab_charts:
                      color_continuous_scale=[RED, "#64748B", ACCENT], title=f"Výnos za zvolené obdobie · {perf_col.replace(' (%)', '')}")
         fig.update_layout(coloraxis_showscale=False, yaxis_title="", xaxis_title="Výnos (%)")
         fig.update_traces(texttemplate="%{x:+.2f}%", textposition="outside")
+        lo, hi = float(chart_df[perf_col].min()), float(chart_df[perf_col].max())
+        pad = max(abs(lo), abs(hi)) * 0.25 + 1
+        fig.update_xaxes(range=[min(lo, 0) - pad, max(hi, 0) + pad])
         st.plotly_chart(make_plotly_dark(fig, 430), use_container_width=True)
     with c2:
         scatter_df = metrics.dropna(subset=["Volatilita (%)", "3M (%)"]).copy()
@@ -1274,6 +1330,130 @@ with tab_screener:
         - **Technické ochladenie:** RSI napríklad 30–60; RSI pod 30 sa často označuje ako prepredané, ale môže zostať nízke aj počas silného poklesu.
         - **Fundamentálne hľadanie:** použi kartu Fundamenty a porovnávaj P/E, ziskovú maržu, ROE, zadlženie a rast; jednotlivý ukazovateľ nikdy nehodnoť izolovane.
         """)
+
+# -----------------------------------------------------------------------------
+# TAB: porovnanie ľubovoľných firiem
+# -----------------------------------------------------------------------------
+with tab_compare:
+    st.markdown("<div class='section-kicker'>Compare any firm</div>", unsafe_allow_html=True)
+    st.subheader("Porovnanie ľubovoľných firiem")
+    st.markdown(
+        "Pridaj až 4 firmy hľadaním podľa názvu alebo zadaním symbolu. Nemusia byť vo watchliste "
+        "a nemusia byť na americkej burze. Aplikácia ukáže ich čísla vedľa seba a vysvetlí ich. "
+        "Nehodnotí, ktorá firma je lepšia, a nepredpovedá vývoj ceny."
+    )
+
+    cmp_left, cmp_right = st.columns([1.4, 1])
+    with cmp_left:
+        st.text_input("Hľadať firmu alebo ETF podľa názvu", key="compare_search", placeholder="napr. Siemens, Allianz, Samsung")
+        compare_query = str(st.session_state.get("compare_search", "")).strip()
+        if compare_query:
+            cmp_hits = search_yahoo(compare_query)
+            if not cmp_hits:
+                st.caption("Nič sa nenašlo. Skús iný názov alebo symbol vpravo.")
+            for hit in cmp_hits:
+                label = f"{hit['symbol']} · {hit['name']}"
+                if hit["exchange"]:
+                    label += f" ({hit['exchange']})"
+                st.button(
+                    f"➕ {label}",
+                    key=f"cmp_hit_{hit['symbol']}",
+                    use_container_width=True,
+                    on_click=add_compare,
+                    args=(hit["symbol"],),
+                )
+    with cmp_right:
+        st.text_input("Alebo zadaj symbol", key="compare_symbol", placeholder="napr. SAP.DE alebo SIE",
+                      on_change=add_compare_symbol)
+        st.button("Pridať symbol", use_container_width=True, on_click=add_compare_symbol)
+        if st.session_state.get("compare_error"):
+            st.error(f"Pre symbol „{st.session_state['compare_error']}“ sa nenašli dáta. Skús príponu burzy, napr. .DE alebo .AS.")
+
+    compare_options = list(dict.fromkeys(st.session_state.get("compare_list", []) + TICKER_UNIVERSE))
+    compare_list = st.multiselect(
+        "Firmy na porovnanie (max. 4)",
+        options=compare_options,
+        key="compare_list",
+        max_selections=MAX_COMPARE,
+        help="Odstrániš firmu kliknutím na ×.",
+    )
+
+    if len(compare_list) < 2:
+        st.info("Vyber aspoň dve firmy na porovnanie.")
+    else:
+        with st.spinner("Načítavam dáta pre porovnanie…"):
+            cmp_prices, cmp_highs, cmp_lows, cmp_volumes, cmp_infos, cmp_errors, _ = load_market_data(
+                tuple(compare_list), period, st.session_state["_market_data_refresh_key"]
+            )
+        cmp_valid = [t for t in compare_list if t in cmp_prices.columns] if not cmp_prices.empty else []
+        if len(cmp_valid) < 2:
+            st.warning("Pre aspoň dve zvolené firmy sa nepodarilo načítať ceny. Skús iné symboly alebo zadaj príponu burzy.")
+        else:
+            cmp_metrics = build_stock_metrics(cmp_valid, cmp_prices, cmp_highs, cmp_lows, cmp_volumes, cmp_infos, benchmark_returns)
+            cmp_names = {t: safe_name(cmp_infos.get(t, {}), t) for t in cmp_valid}
+            cmp_currency = {t: cmp_infos.get(t, {}).get("currency") or "?" for t in cmp_valid}
+            st.markdown("#### Firmy vedľa seba")
+            st.caption("Mena: " + ", ".join(f"{cmp_names[t]} ({cmp_currency[t]})" for t in cmp_valid)
+                       + ". Ceny v rôznych menách nie sú priamo porovnateľné, výnosy a pomery áno.")
+
+            cmp_numeric = {
+                "Cena (lokálna mena)": "Cena",
+                "1Y (%)": "Výnos za 1 rok (%)",
+                "3M (%)": "Výnos za 3 mesiace (%)",
+                "Volatilita (%)": "Ročná volatilita (%)",
+                "Max. prepad (%)": "Max. prepad (%)",
+                "Technické skóre": "Technické skóre (0–100)",
+                "P/E (TTM)": "P/E (TTM)",
+                "Forward P/E": "Forward P/E",
+                "Zisková marža (%)": "Zisková marža (%)",
+                "ROE (%)": "ROE (%)",
+                "Rast tržieb (%)": "Rast tržieb (%)",
+                "Debt/Equity": "Debt/Equity",
+                "Dividendový výnos (%)": "Dividendový výnos (%)",
+                "Beta vs. benchmark": "Beta voči benchmarku",
+                "Trhová kapitalizácia": "Trhová kapitalizácia",
+            }
+            cmp_table = cmp_metrics.set_index("Ticker")[list(cmp_numeric.keys())]
+            cmp_table.columns = list(cmp_numeric.values())
+            cmp_table = cmp_table.T.apply(pd.to_numeric, errors="coerce")
+            cmp_table.columns = [cmp_names[t] for t in cmp_table.columns]
+            st.dataframe(cmp_table.style.format("{:,.2f}", na_rep="—"), use_container_width=True)
+            st.caption("Pomlčka znamená chýbajúci údaj, nie nulu. Fundamentálne údaje pre niektoré európske ETF a menšie firmy chýbajú.")
+
+            norm = cmp_prices[cmp_valid].dropna(how="all")
+            norm = norm.apply(lambda s: s / s.dropna().iloc[0] * 100 if s.notna().any() else s)
+            fig = px.line(norm, x=norm.index, y=norm.columns, title="Vývoj ceny: prvá dostupná hodnota = 100")
+            fig.update_layout(xaxis_title="Dátum", yaxis_title="Index (štart = 100)")
+            st.plotly_chart(make_plotly_dark(fig, 460), use_container_width=True)
+
+            st.markdown("<div class='info-box'><b>Ako čítať porovnanie:</b> Každé číslo má iný význam. Vyššia historická výnosnosť bola často spojená s vyšším kolísaním. Vysoké P/E môže znamenať vysoké očakávania trhu. Marža a ROE sa dajú porovnávať hlavne v rámci rovnakého odvetvia. Porovnanie nevyhlasuje víťaza a nepredpovedá budúce výnosy.</div>", unsafe_allow_html=True)
+
+            with st.expander("Čo jednotlivé ukazovatele znamenajú"):
+                st.markdown("""
+                - **Výnos za 1 rok a 3 mesiace:** zmena ceny v minulosti, nie záruka budúceho vývoja.
+                - **Volatilita a max. prepad:** ako veľmi cena kolísala a aký hlboký pokles už firma zažila. Pomáha odhadnúť, či by si takýto pokles zvládol.
+                - **P/E a Forward P/E:** koľko trh platí za jednotku zisku. Forward P/E používa odhad budúceho zisku, ktorý sa nemusí naplniť.
+                - **Zisková marža a ROE:** ako efektívne firma mení tržby a vlastný kapitál na zisk. Závisia od odvetvia.
+                - **Rast tržieb:** ako sa tržby menili, nie či budú rásť.
+                - **Debt/Equity:** koľko dlhu firma používa. Vyšší dlh zvyšuje citlivosť na horšie podmienky.
+                - **Dividendový výnos:** dividenda voči cene. Vysoký výnos môže sprevádzať pokles ceny.
+                - **Beta:** citlivosť na benchmark v minulosti.
+                - **Trhová kapitalizácia:** približná trhová hodnota firmy. Väčšia firma nie je automaticky bezpečnejšia.
+                """)
+
+            with st.expander("Otázky, ktoré si môžeš položiť pri každej firme"):
+                st.markdown("""
+                1. Z čoho firma zarába a je to závislé na jednom produkte, zákazníkovi alebo regióne?
+                2. Prečo sa jej čísla líšia od konkurencie, napríklad marža alebo dlh?
+                3. Čo by muselo nastať, aby sa tvoja investičná téza ukázala ako nesprávna?
+                4. Sú údaje z oficiálnych výkazov firmy, alebo len z jedného zdroja?
+                5. Ako by firma prežila pokles trhu o 30 %?
+                """)
+
+            if cmp_errors:
+                with st.expander(f"Poznámky k načítaniu ({len(cmp_errors)})"):
+                    for issue in cmp_errors:
+                        st.write(f"- {issue}")
 
 # -----------------------------------------------------------------------------
 # TAB: portfolio construction and risk
