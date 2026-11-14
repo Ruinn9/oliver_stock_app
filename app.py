@@ -253,17 +253,24 @@ def kpi_card(label: str, value: str, note: str, tone: str = "neutral") -> None:
 
 
 @st.cache_data(ttl=86400, show_spinner=False)
-def translate_sk(text: str) -> str:
-    """Preloží text do slovenčiny (voľný Google Translate). Pri chybe vráti pôvodný text."""
+def translate_sk(text: str) -> tuple[str, str | None]:
+    """Preloží text do slovenčiny. Vracia (text, chybová správa alebo None)."""
     if not text:
-        return text
+        return text, None
     try:
         from deep_translator import GoogleTranslator
-        chunks = [text[i:i + 4500] for i in range(0, len(text), 4500)]
-        translated = [GoogleTranslator(source="auto", target="sk").translate(chunk) or chunk for chunk in chunks]
-        return " ".join(translated)
-    except Exception:
-        return text
+    except Exception as exc:
+        return text, f"Knižnica na preklad nie je nainštalovaná ({type(exc).__name__})."
+    try:
+        translator = GoogleTranslator(source="en", target="sk")
+        chunks = [text[i:i + 4000] for i in range(0, len(text), 4000)]
+        translated = []
+        for chunk in chunks:
+            result = translator.translate(chunk)
+            translated.append(result or chunk)
+        return " ".join(translated), None
+    except Exception as exc:
+        return text, f"Preklad zlyhal ({type(exc).__name__}: {str(exc)[:120]})."
 
 
 # Curated examples across the 11 main equity sectors, plus common broad-market ETFs.
@@ -512,7 +519,7 @@ def load_market_data(tickers: tuple[str, ...], period: str, refresh_key: str, ba
         return pd.concat(series_map.values(), axis=1).sort_index() if series_map else pd.DataFrame()
 
     fetched_at = pd.Timestamp.now(tz="Europe/Prague").strftime("%d.%m.%Y %H:%M:%S")
-    return _stack(closes), _stack(highs), _stack(lows), _stack(volumes), infos, errors, fetched_at
+    return _stack(closes), _stack(highs), _stack(lows), _stack({}), infos, errors, fetched_at
 
 
 def refresh_data() -> None:
@@ -1985,8 +1992,10 @@ with tab_fundamentals:
     summary_en = str(profile_info.get("longBusinessSummary", "") or "")
     if summary_en:
         with st.spinner("Prekladám opis…"):
-            summary_sk = translate_sk(summary_en)
+            summary_sk, translate_error = translate_sk(summary_en)
         st.markdown(f"<div class='desc-card'>{html.escape(summary_sk)}</div>", unsafe_allow_html=True)
+        if translate_error:
+            st.caption(f"⚠️ {translate_error} Zobrazuje sa pôvodný anglický text.")
         with st.expander("Pôvodný anglický text"):
             st.write(summary_en)
     else:
