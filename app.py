@@ -74,8 +74,9 @@ st.markdown(
       .section-kicker {{ color: {ACCENT}; font: 500 11px 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .14em; margin: 0 0 6px; }}
       .soft-card {{ border: 1px solid {BORDER}; background: linear-gradient(145deg, {PANEL}, #0f1729); border-radius: 15px; padding: 16px 17px; height: 100%; box-shadow: 0 8px 24px rgba(0,0,0,.18); }}
       .soft-label {{ color: {MUTED}; font: 11px 'DM Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }}
-      .soft-value {{ color: {TEXT}; font-size: 25px; font-weight: 800; margin: 8px 0 3px; letter-spacing: -.04em; }}
+      .soft-value {{ color: {TEXT}; font-size: 25px; font-weight: 800; margin: 8px 0 6px; letter-spacing: -.04em; }}
       .soft-note {{ color: {MUTED}; font-size: 12px; line-height: 1.5; }}
+      .kpi-pill {{ display: inline-block; border: 1px solid; border-radius: 99px; padding: 3px 10px; font-size: 12px; font-weight: 600; margin-top: 4px; }}
       .info-box {{ border-left: 3px solid {ACCENT}; background: rgba(84,225,193,.07); border-radius: 0 10px 10px 0; padding: 11px 14px; color: #D5E4F4; line-height: 1.6; font-size: 13px; }}
       .warning-box {{ border-left: 3px solid {GOLD}; background: rgba(255,198,109,.07); border-radius: 0 10px 10px 0; padding: 11px 14px; color: #F0E2C7; line-height: 1.6; font-size: 13px; }}
       .small-muted {{ color: {MUTED}; font-size: 12px; line-height: 1.55; }}
@@ -164,6 +165,14 @@ def safe_name(info: dict[str, Any], ticker: str) -> str:
     return str(info.get("shortName") or info.get("longName") or ticker)
 
 
+def tone_for_sign(value: Any) -> str:
+    """Vráti 'up' pre kladnú hodnotu, 'down' pre zápornú a 'neutral' pre chýbajúcu."""
+    value = as_float(value)
+    if not np.isfinite(value):
+        return "neutral"
+    return "up" if value >= 0 else "down"
+
+
 def make_plotly_dark(fig: go.Figure, height: int = 430) -> go.Figure:
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
@@ -182,6 +191,22 @@ def make_plotly_dark(fig: go.Figure, height: int = 430) -> go.Figure:
 def metric_card(label: str, value: str, note: str) -> None:
     st.markdown(
         f"<div class='soft-card'><div class='soft-label'>{label}</div><div class='soft-value'>{value}</div><div class='soft-note'>{note}</div></div>",
+        unsafe_allow_html=True,
+    )
+
+
+def kpi_card(label: str, value: str, note: str, tone: str = "neutral") -> None:
+    """Karta s farebnou šípkou: zelená hore, červená dole, sivá bez šípky."""
+    palette = {"up": ACCENT, "down": RED, "neutral": MUTED}
+    arrows = {"up": "↑", "down": "↓", "neutral": "•"}
+    color = palette.get(tone, MUTED)
+    value_color = TEXT if tone == "neutral" else color
+    st.markdown(
+        f"""<div class='soft-card'>
+          <div class='soft-label'>{label}</div>
+          <div class='soft-value' style='color:{value_color}'>{value}</div>
+          <span class='kpi-pill' style='color:{color};border-color:{color}88;background:{color}1A'>{arrows[tone]} {note}</span>
+        </div>""",
         unsafe_allow_html=True,
     )
 
@@ -1137,8 +1162,9 @@ with st.expander(f"📰 Správy z watchlistu ({news_count})", expanded=False):
 # -----------------------------------------------------------------------------
 # 3. Detailné záložky
 # -----------------------------------------------------------------------------
-tab_charts, tab_screener, tab_compare, tab_portfolio, tab_fundamentals, tab_swot, tab_glossary = st.tabs(
-    ["↗ Grafy & technika", "⌕ Screener", "🆚 Porovnanie", "⛨ Portfólio & riziko", "▤ Fundamenty", "◩ SWOT", "ⓘ Slovník"]
+tab_charts, tab_screener, tab_compare, tab_portfolio, tab_mc, tab_fundamentals, tab_swot, tab_glossary = st.tabs(
+    ["↗ Grafy & technika", "⌕ Screener", "🆚 Porovnanie", "⛨ Portfólio & riziko", "🎲 Monte Carlo",
+     "▤ Fundamenty", "◩ SWOT", "ⓘ Slovník"]
 )
 
 # -----------------------------------------------------------------------------
@@ -1395,7 +1421,7 @@ with tab_compare:
             st.markdown("#### Firmy vedľa seba")
             st.caption("Mena: " + ", ".join(f"{cmp_names[t]} ({cmp_currency[t]})" for t in cmp_valid)
                        + ". Ceny v rôznych menách nie sú priamo porovnateľné, výnosy a pomery áno.")
-            
+
             cmp_numeric = {
                 "Cena": "Cena (lokálna mena)",
                 "1Y (%)": "Výnos za 1 rok (%)",
@@ -1490,16 +1516,30 @@ with tab_portfolio:
     effective_positions = 1 / float(np.sum(weight_series ** 2)) if float(np.sum(weight_series ** 2)) > 0 else np.nan
 
     p1, p2, p3, p4 = st.columns(4)
-    p1.metric("Modelovaný kapitál", f"{capital:,.2f} €", allocation_method)
-    p2.metric("Ročná volatilita", fmt_pct(annual_vol * 100 if np.isfinite(annual_vol) else np.nan), "Kolísanie portfólia")
-    p3.metric("Sharpe ratio", fmt_num(sharpe, 2), f"Bezriziková sadzba: {risk_free:.2f}%")
-    p4.metric("Historický max. prepad", fmt_pct(max_drawdown_port), "Najväčší pokles od vrcholu v zvolenom období")
+    with p1:
+        kpi_card("Modelovaný kapitál", f"{capital:,.2f} €", allocation_method, "neutral")
+    with p2:
+        kpi_card("Ročná volatilita", fmt_pct(annual_vol * 100 if np.isfinite(annual_vol) else np.nan),
+                 "Kolísanie portfólia", "neutral")
+    with p3:
+        kpi_card("Sharpe ratio", fmt_num(sharpe, 2), f"Bezriziková sadzba: {risk_free:.2f}%", tone_for_sign(sharpe))
+    with p4:
+        kpi_card("Historický max. prepad", fmt_pct(max_drawdown_port),
+                 "Najväčší pokles od vrcholu", "down" if np.isfinite(max_drawdown_port) and max_drawdown_port < 0 else "neutral")
 
     p5, p6, p7, p8 = st.columns(4)
-    p5.metric("Historický CAGR", fmt_pct(annualized_return * 100 if np.isfinite(annualized_return) else np.nan))
-    p6.metric("VaR 95 % / 1 deň", f"{var_eur:,.2f} €" if np.isfinite(var_eur) else "—", "Historický odhad z 5. percentilu")
-    p7.metric("CVaR 95 % / 1 deň", f"{cvar_eur:,.2f} €" if np.isfinite(cvar_eur) else "—", "Priemerná strata v najhorších 5 % dní")
-    p8.metric("Efektívny počet pozícií", f"{effective_positions:.2f}" if np.isfinite(effective_positions) else "—", f"HHI: {hhi:,.2f} (váhy v % na druhú)")
+    with p5:
+        kpi_card("Historický CAGR", fmt_pct(annualized_return * 100 if np.isfinite(annualized_return) else np.nan),
+                 "Ročný zložený výnos", tone_for_sign(annualized_return))
+    with p6:
+        kpi_card("VaR 95 % / 1 deň", f"{var_eur:,.2f} €" if np.isfinite(var_eur) else "—",
+                 "Historický odhad z 5. percentilu", "down" if np.isfinite(var_eur) else "neutral")
+    with p7:
+        kpi_card("CVaR 95 % / 1 deň", f"{cvar_eur:,.2f} €" if np.isfinite(cvar_eur) else "—",
+                 "Priemerná strata v najhorších 5 % dní", "down" if np.isfinite(cvar_eur) else "neutral")
+    with p8:
+        kpi_card("Efektívny počet pozícií", f"{effective_positions:.2f}" if np.isfinite(effective_positions) else "—",
+                 f"HHI: {hhi:,.2f} (váhy v % na druhú)", "neutral")
 
     c1, c2 = st.columns([1, 1])
     with c1:
@@ -1534,137 +1574,156 @@ with tab_portfolio:
             fig_corr.update_layout(coloraxis_colorbar=dict(title="Korelácia"))
             st.plotly_chart(make_plotly_dark(fig_corr, max(330, len(valid_tickers) * 28)), use_container_width=True)
 
-    with st.expander("Monte Carlo: možné scenáre, nie predpoveď", expanded=False):
-        m1, m2 = st.columns(2)
-        with m1:
-            mc_days = st.slider("Simulačný horizont (obchodné dni)", 21, 756, 252, 21)
-        with m2:
-            mc_sims = st.select_slider("Počet simulácií", options=[250, 500, 1000, 2000, 4000], value=1000)
-
-        sp500_ticker = "SPY" if "SPY" in prices_all.columns else ("^GSPC" if "^GSPC" in prices_all.columns else None)
-        sp500_returns = (prices_all[sp500_ticker].pct_change(fill_method=None).dropna()
-                         if sp500_ticker else pd.Series(dtype=float))
-        rng = np.random.default_rng(2026)
-        historical = portfolio_returns.replace([np.inf, -np.inf], np.nan).dropna().to_numpy(dtype=float)
-        historical = historical[np.isfinite(historical) & (historical > -1)]
-        sp500_historical = sp500_returns.replace([np.inf, -np.inf], np.nan).dropna().to_numpy(dtype=float)
-        sp500_historical = sp500_historical[np.isfinite(sp500_historical) & (sp500_historical > -1)]
-
-        if len(historical) >= 20:
-            sampled = rng.choice(historical, size=(mc_days, mc_sims), replace=True)
-            simulated_paths = capital * np.cumprod(1 + sampled, axis=0)
-            final_values = simulated_paths[-1, :]
-            x_days = np.arange(1, mc_days + 1)
-            low_band = np.percentile(simulated_paths, 5, axis=1)
-            high_band = np.percentile(simulated_paths, 95, axis=1)
-            median_path = np.median(simulated_paths, axis=1)
-
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=x_days, y=high_band, mode="lines", line=dict(width=0), showlegend=False, name="95. percentil portfólia"))
-            fig.add_trace(go.Scatter(x=x_days, y=low_band, mode="lines", line=dict(width=0), fill="tonexty",
-                                     fillcolor="rgba(140,168,255,.15)", name="Portfólio · rozpätie 5.–95. percentil"))
-            for j in range(min(60, mc_sims)):
-                fig.add_trace(go.Scatter(x=x_days, y=simulated_paths[:, j], mode="lines", line=dict(color="rgba(84,225,193,.12)", width=1), showlegend=False))
-            fig.add_trace(go.Scatter(x=x_days, y=median_path, mode="lines", line=dict(color=ACCENT, width=3), name="Portfólio · medián"))
-
-            sp500_final_values = np.array([])
-            sp500_median_path = None
-            if len(sp500_historical) >= 20:
-                sp500_sampled = rng.choice(sp500_historical, size=(mc_days, mc_sims), replace=True)
-                sp500_paths = capital * np.cumprod(1 + sp500_sampled, axis=0)
-                sp500_final_values = sp500_paths[-1, :]
-                sp500_median_path = np.median(sp500_paths, axis=1)
-                fig.add_trace(go.Scatter(x=x_days, y=sp500_median_path, mode="lines",
-                                         line=dict(color=GOLD, width=3, dash="dash"), name=f"S&P 500 · medián ({sp500_ticker})"))
-            else:
-                st.warning("S&P 500 benchmark nemá dosť historických výnosov na simuláciu.")
-
-            fig.update_layout(title=f"Monte Carlo porovnanie · {mc_sims:,} ciest · {mc_days} obchodných dní",
-                              xaxis_title="Obchodný deň", yaxis_title="Modelová hodnota (€)")
-            st.plotly_chart(make_plotly_dark(fig, 460), use_container_width=True)
-            st.caption(f"Každý model začína rovnakým kapitálom {capital:,.2f} €. S&P 500 je reprezentovaný {sp500_ticker or 'nedostupným benchmarkom'}.")
-
-            q05, q50, q95 = np.percentile(final_values, [5, 50, 95])
-            if len(sp500_final_values):
-                sp_q50 = float(np.percentile(sp500_final_values, 50))
-                diff_q50 = q50 - sp_q50
-                qcols = st.columns(5)
-                qcols[0].metric("Portfólio · 5. percentil", f"{q05:,.2f} €", fmt_pct_signed((q05 / capital - 1) * 100))
-                qcols[1].metric("Portfólio · medián", f"{q50:,.2f} €", fmt_pct_signed((q50 / capital - 1) * 100))
-                qcols[2].metric("S&P 500 · medián", f"{sp_q50:,.2f} €", fmt_pct_signed((sp_q50 / capital - 1) * 100))
-                qcols[3].metric("Rozdiel mediánov", f"{diff_q50:+,.2f} €", "Portfólio mínus S&P 500")
-                qcols[4].metric("Portfólio · 95. percentil", f"{q95:,.2f} €", fmt_pct_signed((q95 / capital - 1) * 100))
-            else:
-                qcols = st.columns(3)
-                qcols[0].metric("Slabší scenár · 5. percentil", f"{q05:,.2f} €", fmt_pct_signed((q05 / capital - 1) * 100))
-                qcols[1].metric("Medián simulácií", f"{q50:,.2f} €", fmt_pct_signed((q50 / capital - 1) * 100))
-                qcols[2].metric("Silnejší scenár · 95. percentil", f"{q95:,.2f} €", fmt_pct_signed((q95 / capital - 1) * 100))
-
-            st.markdown("#### Medián každej vybranej akcie oproti S&P 500")
-            st.caption("Každá čiara samostatne modeluje investíciu celého zadaného kapitálu do jednej akcie. Nejde o vážené portfólio.")
-            compare_mc_tickers = st.multiselect(
-                "Akcie zahrnuté do porovnania",
-                options=valid_tickers,
-                default=valid_tickers,
-                key="mc_compare_tickers",
-                help="Predvolene sú zahrnuté všetky načítané akcie a ETF. Odznačením zúžiš graf, ak je príliš hustý.",
-            )
-            fig_compare = go.Figure()
-            summary_rows: list[dict[str, Any]] = []
-            if len(sp500_historical) >= 20:
-                summary_rows.append({
-                    "Ticker": "S&P 500",
-                    "Medián hodnoty (€)": float(np.percentile(sp500_final_values, 50)) if len(sp500_final_values) else np.nan,
-                    "Medián výnosu (%)": (float(np.percentile(sp500_final_values, 50)) / capital - 1) * 100 if len(sp500_final_values) else np.nan,
-                    "5. percentil (€)": float(np.percentile(sp500_final_values, 5)) if len(sp500_final_values) else np.nan,
-                    "95. percentil (€)": float(np.percentile(sp500_final_values, 95)) if len(sp500_final_values) else np.nan,
-                    "Simulácie končiace stratou (%)": float(np.mean(sp500_final_values < capital) * 100) if len(sp500_final_values) else np.nan,
-                })
-                fig_compare.add_trace(go.Scatter(x=x_days, y=sp500_median_path, mode="lines",
-                                                 line=dict(color=GOLD, width=3.5, dash="dash"), name=f"S&P 500 ({sp500_ticker})"))
-
-            palette = [ACCENT, ACCENT_2, "#FF9E80", "#DDA0DD", "#69D2E7", "#C3E88D", "#FF8FAB", "#B8C0FF", "#F4A261"]
-            for idx, ticker in enumerate(compare_mc_tickers):
-                if ticker not in prices_all.columns:
-                    continue
-                ticker_returns = prices_all[ticker].pct_change(fill_method=None).dropna().to_numpy(dtype=float)
-                ticker_returns = ticker_returns[np.isfinite(ticker_returns) & (ticker_returns > -1)]
-                if len(ticker_returns) < 20:
-                    continue
-                ticker_sampled = rng.choice(ticker_returns, size=(mc_days, mc_sims), replace=True)
-                ticker_paths = capital * np.cumprod(1 + ticker_sampled, axis=0)
-                ticker_median = np.median(ticker_paths, axis=1)
-                ticker_final = ticker_paths[-1, :]
-                fig_compare.add_trace(go.Scatter(x=x_days, y=ticker_median, mode="lines",
-                                                 line=dict(color=palette[idx % len(palette)], width=1.8), name=ticker))
-                summary_rows.append({
-                    "Ticker": ticker,
-                    "Medián hodnoty (€)": float(np.percentile(ticker_final, 50)),
-                    "Medián výnosu (%)": (float(np.percentile(ticker_final, 50)) / capital - 1) * 100,
-                    "5. percentil (€)": float(np.percentile(ticker_final, 5)),
-                    "95. percentil (€)": float(np.percentile(ticker_final, 95)),
-                    "Simulácie končiace stratou (%)": float(np.mean(ticker_final < capital) * 100),
-                })
-            fig_compare.update_layout(title="Mediánová cesta: jednotlivé tickery vs. S&P 500",
-                                      xaxis_title="Obchodný deň", yaxis_title="Modelová hodnota (€)")
-            st.plotly_chart(make_plotly_dark(fig_compare, 500), use_container_width=True)
-            if summary_rows:
-                summary_df = pd.DataFrame(summary_rows).sort_values("Medián výnosu (%)", ascending=False, na_position="last")
-                st.markdown("#### Porovnávacia tabuľka výsledkov")
-                st.dataframe(summary_df.style.format({
-                    "Medián hodnoty (€)": "{:,.2f} €", "Medián výnosu (%)": "{:+.2f}%",
-                    "5. percentil (€)": "{:,.2f} €", "95. percentil (€)": "{:,.2f} €",
-                    "Simulácie končiace stratou (%)": "{:.2f}%",
-                }, na_rep="—"), use_container_width=True, hide_index=True)
-                st.download_button("⬇ Stiahnuť Monte Carlo porovnanie do CSV",
-                                   data=summary_df.to_csv(index=False).encode("utf-8-sig"),
-                                   file_name="oliver_leso_monte_carlo_comparison.csv", mime="text/csv")
-            st.markdown("<div class='warning-box'><b>Ako interpretovať:</b> Medián je prostredná hodnota nasimulovaných scenárov, nie predpoveď. S&P 500 slúži ako porovnávací benchmark. Individuálne akcie sú simulované samostatne, takže druhý graf neuchováva historické korelácie medzi akciami. Model nezachytáva spoľahlivo zmenu trhového režimu, budúce nečakané udalosti, poplatky, dane ani menové konverzie.</div>", unsafe_allow_html=True)
-        else:
-            st.warning("Na Monte Carlo simuláciu je potrebných aspoň 20 dostupných historických denných výnosov portfólia.")
-
     st.markdown("<div class='info-box'><b>Ako čítať portfóliové riziko:</b> Ročná volatilita odhaduje veľkosť bežných výkyvov, max drawdown ukazuje najväčší pozorovaný prepad od vrcholu, VaR približuje hranicu zlého dňa a CVaR priemernú stratu v najhorších 5 % dní. Každá metrika opisuje iný aspekt rizika, preto ich čítaj spolu.</div>", unsafe_allow_html=True)
     st.markdown("<div class='warning-box'><b>Limit modelu:</b> Inverzná volatilita nie je plná risk parity. Neoptimalizuje korelácie a nezaručuje rovnaký príspevok každého aktíva k riziku. Historické metriky nepredpovedajú budúce straty a výsledok nemusí zahŕňať dividendy, poplatky, dane ani menové konverzie.</div>", unsafe_allow_html=True)
+
+# -----------------------------------------------------------------------------
+# TAB: Monte Carlo (vlastná záložka)
+# -----------------------------------------------------------------------------
+with tab_mc:
+    st.markdown("<div class='section-kicker'>Scenario simulation</div>", unsafe_allow_html=True)
+    st.subheader("Monte Carlo: možné scenáre, nie predpoveď")
+    st.markdown(
+        "Simulácia opakovane náhodne vyberá historické denné výnosy a skladá z nich veľa možných ciest hodnoty. "
+        "Výsledok ukazuje rozpätie možností na základe minulosti, nie to, čo sa stane."
+    )
+
+    m1, m2 = st.columns(2)
+    with m1:
+        mc_days = st.slider("Simulačný horizont (obchodné dni)", 21, 756, 252, 21)
+    with m2:
+        mc_sims = st.select_slider("Počet simulácií", options=[250, 500, 1000, 2000, 4000], value=1000)
+
+    sp500_ticker = "SPY" if "SPY" in prices_all.columns else ("^GSPC" if "^GSPC" in prices_all.columns else None)
+    sp500_returns = (prices_all[sp500_ticker].pct_change(fill_method=None).dropna()
+                     if sp500_ticker else pd.Series(dtype=float))
+    rng = np.random.default_rng(2026)
+    historical = portfolio_returns.replace([np.inf, -np.inf], np.nan).dropna().to_numpy(dtype=float)
+    historical = historical[np.isfinite(historical) & (historical > -1)]
+    sp500_historical = sp500_returns.replace([np.inf, -np.inf], np.nan).dropna().to_numpy(dtype=float)
+    sp500_historical = sp500_historical[np.isfinite(sp500_historical) & (sp500_historical > -1)]
+
+    if len(historical) >= 20:
+        sampled = rng.choice(historical, size=(mc_days, mc_sims), replace=True)
+        simulated_paths = capital * np.cumprod(1 + sampled, axis=0)
+        final_values = simulated_paths[-1, :]
+        x_days = np.arange(1, mc_days + 1)
+        low_band = np.percentile(simulated_paths, 5, axis=1)
+        high_band = np.percentile(simulated_paths, 95, axis=1)
+        median_path = np.median(simulated_paths, axis=1)
+
+        st.markdown("#### Portfólio: rozpätie scenárov")
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=x_days, y=high_band, mode="lines", line=dict(width=0), showlegend=False, name="95. percentil portfólia"))
+        fig.add_trace(go.Scatter(x=x_days, y=low_band, mode="lines", line=dict(width=0), fill="tonexty",
+                                 fillcolor="rgba(140,168,255,.15)", name="Portfólio · rozpätie 5.–95. percentil"))
+        for j in range(min(60, mc_sims)):
+            fig.add_trace(go.Scatter(x=x_days, y=simulated_paths[:, j], mode="lines", line=dict(color="rgba(84,225,193,.12)", width=1), showlegend=False))
+        fig.add_trace(go.Scatter(x=x_days, y=median_path, mode="lines", line=dict(color=ACCENT, width=3), name="Portfólio · medián"))
+
+        sp500_final_values = np.array([])
+        sp500_median_path = None
+        if len(sp500_historical) >= 20:
+            sp500_sampled = rng.choice(sp500_historical, size=(mc_days, mc_sims), replace=True)
+            sp500_paths = capital * np.cumprod(1 + sp500_sampled, axis=0)
+            sp500_final_values = sp500_paths[-1, :]
+            sp500_median_path = np.median(sp500_paths, axis=1)
+            fig.add_trace(go.Scatter(x=x_days, y=sp500_median_path, mode="lines",
+                                     line=dict(color=GOLD, width=3, dash="dash"), name=f"S&P 500 · medián ({sp500_ticker})"))
+        else:
+            st.warning("S&P 500 benchmark nemá dosť historických výnosov na simuláciu.")
+
+        fig.update_layout(title=f"Monte Carlo porovnanie · {mc_sims:,} ciest · {mc_days} obchodných dní",
+                          xaxis_title="Obchodný deň", yaxis_title="Modelová hodnota (€)")
+        st.plotly_chart(make_plotly_dark(fig, 460), use_container_width=True)
+        st.caption(f"Každý model začína rovnakým kapitálom {capital:,.2f} €. S&P 500 je reprezentovaný {sp500_ticker or 'nedostupným benchmarkom'}.")
+
+        q05, q50, q95 = np.percentile(final_values, [5, 50, 95])
+        if len(sp500_final_values):
+            sp_q50 = float(np.percentile(sp500_final_values, 50))
+            diff_q50 = q50 - sp_q50
+            qcols = st.columns(5)
+            with qcols[0]:
+                kpi_card("Portfólio · 5. percentil", f"{q05:,.2f} €", fmt_pct_signed((q05 / capital - 1) * 100), tone_for_sign(q05 - capital))
+            with qcols[1]:
+                kpi_card("Portfólio · medián", f"{q50:,.2f} €", fmt_pct_signed((q50 / capital - 1) * 100), tone_for_sign(q50 - capital))
+            with qcols[2]:
+                kpi_card("S&P 500 · medián", f"{sp_q50:,.2f} €", fmt_pct_signed((sp_q50 / capital - 1) * 100), tone_for_sign(sp_q50 - capital))
+            with qcols[3]:
+                kpi_card("Rozdiel mediánov", f"{diff_q50:+,.2f} €", "Portfólio mínus S&P 500", tone_for_sign(diff_q50))
+            with qcols[4]:
+                kpi_card("Portfólio · 95. percentil", f"{q95:,.2f} €", fmt_pct_signed((q95 / capital - 1) * 100), tone_for_sign(q95 - capital))
+        else:
+            qcols = st.columns(3)
+            with qcols[0]:
+                kpi_card("Slabší scenár · 5. percentil", f"{q05:,.2f} €", fmt_pct_signed((q05 / capital - 1) * 100), tone_for_sign(q05 - capital))
+            with qcols[1]:
+                kpi_card("Medián simulácií", f"{q50:,.2f} €", fmt_pct_signed((q50 / capital - 1) * 100), tone_for_sign(q50 - capital))
+            with qcols[2]:
+                kpi_card("Silnejší scenár · 95. percentil", f"{q95:,.2f} €", fmt_pct_signed((q95 / capital - 1) * 100), tone_for_sign(q95 - capital))
+
+        st.markdown("#### Medián každej vybranej akcie oproti S&P 500")
+        st.caption("Každá čiara samostatne modeluje investíciu celého zadaného kapitálu do jednej akcie. Nejde o vážené portfólio.")
+        compare_mc_tickers = st.multiselect(
+            "Akcie zahrnuté do porovnania",
+            options=valid_tickers,
+            default=valid_tickers,
+            key="mc_compare_tickers",
+            help="Predvolene sú zahrnuté všetky načítané akcie a ETF. Odznačením zúžiš graf, ak je príliš hustý.",
+        )
+        fig_compare = go.Figure()
+        summary_rows: list[dict[str, Any]] = []
+        if len(sp500_historical) >= 20:
+            summary_rows.append({
+                "Ticker": "S&P 500",
+                "Medián hodnoty (€)": float(np.percentile(sp500_final_values, 50)) if len(sp500_final_values) else np.nan,
+                "Medián výnosu (%)": (float(np.percentile(sp500_final_values, 50)) / capital - 1) * 100 if len(sp500_final_values) else np.nan,
+                "5. percentil (€)": float(np.percentile(sp500_final_values, 5)) if len(sp500_final_values) else np.nan,
+                "95. percentil (€)": float(np.percentile(sp500_final_values, 95)) if len(sp500_final_values) else np.nan,
+                "Simulácie končiace stratou (%)": float(np.mean(sp500_final_values < capital) * 100) if len(sp500_final_values) else np.nan,
+            })
+            fig_compare.add_trace(go.Scatter(x=x_days, y=sp500_median_path, mode="lines",
+                                             line=dict(color=GOLD, width=3.5, dash="dash"), name=f"S&P 500 ({sp500_ticker})"))
+
+        palette = [ACCENT, ACCENT_2, "#FF9E80", "#DDA0DD", "#69D2E7", "#C3E88D", "#FF8FAB", "#B8C0FF", "#F4A261"]
+        for idx, ticker in enumerate(compare_mc_tickers):
+            if ticker not in prices_all.columns:
+                continue
+            ticker_returns = prices_all[ticker].pct_change(fill_method=None).dropna().to_numpy(dtype=float)
+            ticker_returns = ticker_returns[np.isfinite(ticker_returns) & (ticker_returns > -1)]
+            if len(ticker_returns) < 20:
+                continue
+            ticker_sampled = rng.choice(ticker_returns, size=(mc_days, mc_sims), replace=True)
+            ticker_paths = capital * np.cumprod(1 + ticker_sampled, axis=0)
+            ticker_median = np.median(ticker_paths, axis=1)
+            ticker_final = ticker_paths[-1, :]
+            fig_compare.add_trace(go.Scatter(x=x_days, y=ticker_median, mode="lines",
+                                             line=dict(color=palette[idx % len(palette)], width=1.8), name=ticker))
+            summary_rows.append({
+                "Ticker": ticker,
+                "Medián hodnoty (€)": float(np.percentile(ticker_final, 50)),
+                "Medián výnosu (%)": (float(np.percentile(ticker_final, 50)) / capital - 1) * 100,
+                "5. percentil (€)": float(np.percentile(ticker_final, 5)),
+                "95. percentil (€)": float(np.percentile(ticker_final, 95)),
+                "Simulácie končiace stratou (%)": float(np.mean(ticker_final < capital) * 100),
+            })
+        fig_compare.update_layout(title="Mediánová cesta: jednotlivé tickery vs. S&P 500",
+                                  xaxis_title="Obchodný deň", yaxis_title="Modelová hodnota (€)")
+        st.plotly_chart(make_plotly_dark(fig_compare, 500), use_container_width=True)
+        if summary_rows:
+            summary_df = pd.DataFrame(summary_rows).sort_values("Medián výnosu (%)", ascending=False, na_position="last")
+            st.markdown("#### Porovnávacia tabuľka výsledkov")
+            st.dataframe(summary_df.style.format({
+                "Medián hodnoty (€)": "{:,.2f} €", "Medián výnosu (%)": "{:+.2f}%",
+                "5. percentil (€)": "{:,.2f} €", "95. percentil (€)": "{:,.2f} €",
+                "Simulácie končiace stratou (%)": "{:.2f}%",
+            }, na_rep="—"), use_container_width=True, hide_index=True)
+            st.download_button("⬇ Stiahnuť Monte Carlo porovnanie do CSV",
+                               data=summary_df.to_csv(index=False).encode("utf-8-sig"),
+                               file_name="oliver_leso_monte_carlo_comparison.csv", mime="text/csv")
+        st.markdown("<div class='warning-box'><b>Ako interpretovať:</b> Medián je prostredná hodnota nasimulovaných scenárov, nie predpoveď. S&P 500 slúži ako porovnávací benchmark. Individuálne akcie sú simulované samostatne, takže druhý graf neuchováva historické korelácie medzi akciami. Model nezachytáva spoľahlivo zmenu trhového režimu, budúce nečakané udalosti, poplatky, dane ani menové konverzie.</div>", unsafe_allow_html=True)
+    else:
+        st.warning("Na Monte Carlo simuláciu je potrebných aspoň 20 dostupných historických denných výnosov portfólia.")
 
 # -----------------------------------------------------------------------------
 # TAB: fundamentals
