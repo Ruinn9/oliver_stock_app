@@ -1395,9 +1395,9 @@ with tab_compare:
             st.markdown("#### Firmy vedľa seba")
             st.caption("Mena: " + ", ".join(f"{cmp_names[t]} ({cmp_currency[t]})" for t in cmp_valid)
                        + ". Ceny v rôznych menách nie sú priamo porovnateľné, výnosy a pomery áno.")
-
+            
             cmp_numeric = {
-                "Cena (lokálna mena)": "Cena",
+                "Cena": "Cena (lokálna mena)",
                 "1Y (%)": "Výnos za 1 rok (%)",
                 "3M (%)": "Výnos za 3 mesiace (%)",
                 "Volatilita (%)": "Ročná volatilita (%)",
