@@ -56,18 +56,19 @@ st.markdown(
       .stApp {{ background: radial-gradient(circle at 12% 0%, #172643 0, {BG} 38%), radial-gradient(circle at 100% 100%, #0f2a2c 0, transparent 40%); color: {TEXT}; }}
       [data-testid="stHeader"] {{ background: rgba(10,15,29,.85); }}
       [data-testid="stSidebar"] {{ background: linear-gradient(180deg, #101a2d 0%, #0b1222 100%); border-right: 1px solid {BORDER}; }}
-      [data-testid="stSidebar"] * {{ color: {TEXT}; }}
+      [data-testid="stSidebar"] p, [data-testid="stSidebar"] label, [data-testid="stSidebar"] h1,
+      [data-testid="stSidebar"] h4, [data-testid="stSidebar"] summary {{ color: {TEXT}; }}
+      [data-testid="stSidebar"] [data-testid="stExpander"] {{ border: 1px solid {BORDER}; border-radius: 12px; background: rgba(17,26,46,.6); }}
       h1, h2, h3 {{ letter-spacing: -0.03em; }}
       h1 {{ font-weight: 800 !important; }}
-      .block-container {{ padding-top: 2rem; max-width: 1400px; }}
-      .hero {{ padding: 28px 30px 24px; border: 1px solid {BORDER}; border-radius: 22px;
-               background: linear-gradient(115deg, rgba(26,45,73,.98), rgba(16,26,46,.96) 58%, rgba(18,47,57,.9));
-               box-shadow: 0 18px 50px rgba(0,0,0,.28); margin: 4px 0 20px; }}
+      .block-container {{ padding-top: 1.6rem; max-width: 1400px; }}
+      .topbar {{ display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px 18px;
+                 padding: 16px 22px; border:1px solid {BORDER}; border-radius:18px; margin: 2px 0 16px;
+                 background: linear-gradient(115deg, rgba(26,45,73,.98), rgba(16,26,46,.96) 58%, rgba(18,47,57,.9)); }}
+      .brand {{ font-size: 22px; font-weight: 800; color: {TEXT}; letter-spacing: -.02em; }}
+      .brand span {{ color: {ACCENT}; }}
       .eyebrow {{ font: 500 11px 'DM Mono', monospace; letter-spacing: .18em; color: {ACCENT}; text-transform: uppercase; }}
-      .hero-title {{ font-size: clamp(27px, 3vw, 43px); font-weight: 800; line-height: 1.08; color: {TEXT}; margin: 9px 0 10px; }}
-      .hero-sub {{ max-width: 900px; color: {MUTED}; line-height: 1.65; font-size: 14px; }}
-      .hero-meta {{ display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }}
-      .pill {{ border: 1px solid #334763; background: rgba(10,18,34,.48); border-radius: 99px; padding: 6px 10px; color: #C5D4E9; font: 11px 'DM Mono', monospace; }}
+      .snapshot {{ color: {MUTED}; font: 11px 'DM Mono', monospace; }}
       .chip {{ display:inline-block; border: 1px solid #2f4a6e; background: #132037; border-radius: 8px; padding: 3px 9px; margin: 2px 4px 2px 0; color: {ACCENT}; font: 12px 'DM Mono', monospace; }}
       .section-kicker {{ color: {ACCENT}; font: 500 11px 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .14em; margin: 0 0 6px; }}
       .soft-card {{ border: 1px solid {BORDER}; background: linear-gradient(145deg, {PANEL}, #0f1729); border-radius: 15px; padding: 16px 17px; height: 100%; box-shadow: 0 8px 24px rgba(0,0,0,.18); }}
@@ -88,6 +89,11 @@ st.markdown(
       .stButton > button, .stDownloadButton > button, .stLinkButton > a {{ border-radius: 10px; border: 1px solid #3C5977; background: #172640; color: {TEXT}; font-weight: 700; }}
       .stButton > button:hover, .stDownloadButton > button:hover, .stLinkButton > a:hover {{ border-color: {ACCENT}; color: {ACCENT}; }}
       div[data-testid="stDataFrame"] {{ border: 1px solid {BORDER}; border-radius: 12px; overflow: hidden; }}
+      .news-card {{ border: 1px solid {BORDER}; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;
+                    background: linear-gradient(145deg, {PANEL}, #0F1729); }}
+      .news-title {{ color: {TEXT}; font-weight: 700; font-size: 14px; line-height: 1.4; }}
+      .news-meta {{ color: {MUTED}; font: 11px 'DM Mono', monospace; margin-top: 4px; }}
+      .news-summary {{ color: #C5D4E9; font-size: 12.5px; line-height: 1.55; margin-top: 6px; }}
       hr {{ border-color: {BORDER}; }}
       footer {{ visibility: hidden; }}
     </style>
@@ -778,21 +784,20 @@ def remove_all_tickers() -> None:
 
 
 # -----------------------------------------------------------------------------
-# Sidebar controls
+# Sidebar controls (rozbaľovacie sekcie)
 # -----------------------------------------------------------------------------
 st.sidebar.markdown("<div class='eyebrow'>Equity Research Studio</div>", unsafe_allow_html=True)
 st.sidebar.title("Nastavenie analýzy")
-st.sidebar.caption("Vyber akcie, obdobie a parametre modelu.")
 
-st.sidebar.markdown("#### 1 · Pridaj ľubovoľný ticker")
-st.sidebar.caption("Zadaj akýkoľvek symbol z Yahoo Finance (napr. `NET`, `ASML`, `SAP.DE`, `CSPX.L`, `^GSPC`). Každý symbol sa overí a pridá do watchlistu. Viac symbolov oddeľ čiarkou alebo medzerou.")
-st.sidebar.text_input(
-    "Ticker(y) na pridanie",
-    key="custom_ticker_box",
-    placeholder="Napr. NET, ASML, SAP.DE",
-    on_change=add_custom_tickers,
-)
-st.sidebar.button("➕ Pridať ticker(y)", use_container_width=True, on_click=add_custom_tickers)
+with st.sidebar.expander("➕ Pridať ticker", expanded=False):
+    st.caption("Zadaj symbol z Yahoo Finance (napr. `NET`, `ASML`, `SAP.DE`, `CSPX.L`). Viac symbolov oddeľ čiarkou alebo medzerou.")
+    st.text_input(
+        "Ticker(y) na pridanie",
+        key="custom_ticker_box",
+        placeholder="Napr. NET, ASML, SAP.DE",
+        on_change=add_custom_tickers,
+    )
+    st.button("Pridať ticker(y)", use_container_width=True, on_click=add_custom_tickers)
 
 feedback = st.session_state.get("_ticker_feedback")
 if feedback:
@@ -801,51 +806,49 @@ if feedback:
     if feedback["rejected"]:
         st.sidebar.error("Nenašli sa dáta pre: " + ", ".join(feedback["rejected"]))
 
-st.sidebar.markdown("#### 2 · Hľadať podľa názvu")
-st.sidebar.caption("Napíš názov firmy alebo ETF, napríklad „Siemens“ alebo „MSCI World“, a vyber výsledok.")
-search_text = st.sidebar.text_input("Hľadaný názov", key="search_text", placeholder="napr. Siemens")
-if search_text.strip():
-    hits = search_yahoo(search_text.strip())
-    if not hits:
-        st.sidebar.caption("Nič sa nenašlo. Skús iný názov alebo zadaj symbol priamo v poli vyššie.")
-    for hit in hits:
-        label = f"{hit['symbol']} · {hit['name']}"
-        if hit["exchange"]:
-            label += f" ({hit['exchange']})"
-        st.sidebar.button(
-            f"➕ {label}",
-            key=f"add_{hit['symbol']}",
-            use_container_width=True,
-            on_click=add_searched_ticker,
-            args=(hit["symbol"],),
-        )
+with st.sidebar.expander("🔎 Hľadať podľa názvu", expanded=False):
+    st.caption("Napíš názov firmy alebo ETF, napríklad „Siemens“ alebo „MSCI World“, a vyber výsledok.")
+    search_text = st.text_input("Hľadaný názov", key="search_text", placeholder="napr. Siemens")
+    if search_text.strip():
+        hits = search_yahoo(search_text.strip())
+        if not hits:
+            st.caption("Nič sa nenašlo. Skús iný názov alebo zadaj symbol priamo.")
+        for hit in hits:
+            label = f"{hit['symbol']} · {hit['name']}"
+            if hit["exchange"]:
+                label += f" ({hit['exchange']})"
+            st.button(
+                f"➕ {label}",
+                key=f"add_{hit['symbol']}",
+                use_container_width=True,
+                on_click=add_searched_ticker,
+                args=(hit["symbol"],),
+            )
 
-st.sidebar.markdown("#### 3 · Rýchly predvýber")
-preset_choice = st.sidebar.selectbox("Predvýber", list(TICKER_PRESETS.keys()), index=0,
-                                     help="Predvýber nahradí aktuálny zoznam tickerov.")
-if st.sidebar.button("Použiť predvýber", use_container_width=True):
-    st.session_state["ticker_selection"] = TICKER_PRESETS[preset_choice].copy()
-    st.session_state["_ticker_feedback"] = None
-    st.rerun()
-
-st.sidebar.markdown("#### 4 · Pridaj celý sektor")
-sector_watchlist = st.sidebar.multiselect(
-    "Sektory na pridanie do zoznamu",
-    options=list(SECTOR_TICKERS.keys()),
-    key="sector_watchlist_picker",
-    help="Pridá pripravenú skupinu sledovaných tickerov v zvolených sektoroch.",
-)
-if st.sidebar.button("Pridať tickery z vybraných sektorov", use_container_width=True):
-    current = list(st.session_state.get("ticker_selection", []))
-    additions = [ticker for sector in sector_watchlist for ticker in SECTOR_TICKERS.get(sector, [])]
-    combined = list(dict.fromkeys(current + additions))
-    if len(combined) > MAX_TICKERS:
-        st.sidebar.warning(f"Výber by mal {len(combined)} tickerov. Limit aplikácie je {MAX_TICKERS}; vyber menej sektorov alebo odstráň časť tickerov.")
-    else:
-        st.session_state["ticker_selection"] = combined
+with st.sidebar.expander("📚 Predvýbery a sektory", expanded=False):
+    preset_choice = st.selectbox("Predvýber", list(TICKER_PRESETS.keys()), index=0,
+                                 help="Predvýber nahradí aktuálny zoznam tickerov.")
+    if st.button("Použiť predvýber", use_container_width=True):
+        st.session_state["ticker_selection"] = TICKER_PRESETS[preset_choice].copy()
+        st.session_state["_ticker_feedback"] = None
         st.rerun()
+    sector_watchlist = st.multiselect(
+        "Sektory na pridanie",
+        options=list(SECTOR_TICKERS.keys()),
+        key="sector_watchlist_picker",
+        help="Pridá pripravenú skupinu sledovaných tickerov v zvolených sektoroch.",
+    )
+    if st.button("Pridať tickery z vybraných sektorov", use_container_width=True):
+        current = list(st.session_state.get("ticker_selection", []))
+        additions = [ticker for sector in sector_watchlist for ticker in SECTOR_TICKERS.get(sector, [])]
+        combined = list(dict.fromkeys(current + additions))
+        if len(combined) > MAX_TICKERS:
+            st.warning(f"Výber by mal {len(combined)} tickerov. Limit je {MAX_TICKERS}; vyber menej sektorov.")
+        else:
+            st.session_state["ticker_selection"] = combined
+            st.rerun()
 
-st.sidebar.markdown("#### 5 · Aktuálny watchlist")
+st.sidebar.markdown("#### Aktuálny watchlist")
 selection_options = list(dict.fromkeys(TICKER_UNIVERSE + st.session_state.get("ticker_selection", [])))
 selected_tickers = st.sidebar.multiselect(
     "Sledované akcie / ETF",
@@ -861,7 +864,7 @@ tickers = list(dict.fromkeys([t.strip().upper() for t in selected_tickers if t.s
 if len(tickers) > MAX_TICKERS:
     st.sidebar.warning(f"Pre rýchlejšie načítanie je limit {MAX_TICKERS} tickerov. Použije sa prvých {MAX_TICKERS}.")
     tickers = tickers[:MAX_TICKERS]
-st.sidebar.caption(f"Aktuálny výber: **{len(tickers)} tickerov** · výber platí pre prehľad, screener, grafy, portfólio a SWOT.")
+st.sidebar.caption(f"Aktuálny výber: **{len(tickers)} tickerov**")
 
 # Uloženie watchlistu do cookie len po dokončení obnovenia (inak by sa prepísal predvolenými hodnotami).
 if st.session_state.get("watchlist_restored"):
@@ -875,40 +878,39 @@ if st.session_state.get("watchlist_restored"):
         )
         st.session_state["_last_saved_watchlist"] = current_json
 
-st.sidebar.markdown("#### Nastavenia modelu")
-period = st.sidebar.selectbox("Historické obdobie", ["1y", "2y", "5y", "10y", "max"], index=1,
-                              help="Dlhšie obdobie pomáha pri SMA 200, drawdowne a porovnávaní cyklov.")
-benchmark = st.sidebar.selectbox(
-    "Porovnávací benchmark",
-    ["SPY", "QQQ", "^GSPC", "^IXIC", "^STOXX50E", "^FTSE", "VWCE.DE"],
-    index=0,
-    help="Beta porovnáva citlivosť akcie na zvolený benchmark.",
-)
-capital = st.sidebar.number_input("Modelový kapitál (€)", min_value=100.0, max_value=100_000_000.0, value=10_000.0, step=500.0)
-allocation_method = st.sidebar.radio(
-    "Model rozdelenia kapitálu",
-    ["Rovnaká váha", "Inverzná volatilita"],
-    help="Rovnaká váha rozdelí kapitál rovnomerne. Inverzná volatilita prideľuje väčšiu váhu menej volatilným titulom; nejde o plnú risk-parity optimalizáciu.",
-)
-risk_free = st.sidebar.number_input("Bezriziková sadzba (% p. a.)", min_value=0.0, max_value=20.0, value=3.0, step=0.25)
+with st.sidebar.expander("⚙️ Nastavenia modelu", expanded=False):
+    period = st.selectbox("Historické obdobie", ["1y", "2y", "5y", "10y", "max"], index=1,
+                          help="Dlhšie obdobie pomáha pri SMA 200, drawdowne a porovnávaní cyklov.")
+    benchmark = st.selectbox(
+        "Porovnávací benchmark",
+        ["SPY", "QQQ", "^GSPC", "^IXIC", "^STOXX50E", "^FTSE", "VWCE.DE"],
+        index=0,
+        help="Beta porovnáva citlivosť akcie na zvolený benchmark.",
+    )
+    capital = st.number_input("Modelový kapitál (€)", min_value=100.0, max_value=100_000_000.0, value=10_000.0, step=500.0)
+    allocation_method = st.radio(
+        "Model rozdelenia kapitálu",
+        ["Rovnaká váha", "Inverzná volatilita"],
+        help="Rovnaká váha rozdelí kapitál rovnomerne. Inverzná volatilita prideľuje väčšiu váhu menej volatilným titulom; nejde o plnú risk-parity optimalizáciu.",
+    )
+    risk_free = st.number_input("Bezriziková sadzba (% p. a.)", min_value=0.0, max_value=20.0, value=3.0, step=0.25)
 
 st.sidebar.markdown("---")
 st.sidebar.markdown(
-    "<div class='small-muted'>Zdroj: Yahoo Finance cez yfinance. Pri každej novej relácii sa aplikácia pokúsi načítať čerstvé dáta. Ceny sú denné a nemusia byť real-time.</div>",
+    "<div class='small-muted'>Zdroj: Yahoo Finance cez yfinance. Ceny sú denné a nemusia byť real-time.</div>",
     unsafe_allow_html=True,
 )
-if st.sidebar.button("↻ Načítať najnovšie dáta teraz", use_container_width=True):
+if st.sidebar.button("↻ Načítať najnovšie dáta", use_container_width=True):
     st.session_state["_market_data_refresh_key"] = uuid.uuid4().hex
     st.rerun()
 
 if not tickers:
     st.markdown(
-        """<div class='hero'><div class='eyebrow'>OLIVER LESO · PERSONAL MARKET INTELLIGENCE</div>
-        <div class='hero-title'>Equity Research <span style='color:#54E1C1'>Studio</span></div>
-        <div class='hero-sub'>Watchlist je prázdny. Zadaj v ľavom paneli ľubovoľný ticker z Yahoo Finance alebo použi predvýber.</div></div>""",
+        """<div class='topbar'><div><div class='eyebrow'>OLIVER LESO · PERSONAL MARKET INTELLIGENCE</div>
+        <div class='brand'>Equity Research <span>Studio</span></div></div></div>""",
         unsafe_allow_html=True,
     )
-    st.info("V bočnom paneli pridaj aspoň jeden ticker, napríklad NET, AAPL alebo SPY.")
+    st.info("Watchlist je prázdny. V ľavom paneli pridaj aspoň jeden ticker, napríklad NET, AAPL alebo SPY.")
     st.stop()
 
 # -----------------------------------------------------------------------------
@@ -948,7 +950,7 @@ if metrics.empty:
 
 news_by_ticker: dict[str, list[dict[str, Any]]] = {}
 news_status_by_ticker: dict[str, str] = {}
-with st.spinner("Vyhľadávam najnovšie správy iba pre tvoje vybrané tickery…"):
+with st.spinner("Vyhľadávam najnovšie správy pre tvoje tickery…"):
     max_workers = min(8, max(1, len(valid_tickers)))
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_ticker = {
@@ -994,120 +996,115 @@ if data_errors:
             st.write(f"- {issue}")
 
 # -----------------------------------------------------------------------------
-# Header
+# Header (kompaktný)
 # -----------------------------------------------------------------------------
-chips_html = "".join(f"<span class='chip'>{t}</span>" for t in valid_tickers)
+latest_date = price_df.dropna(how="all").index.max()
+latest_text = latest_date.strftime("%d.%m.%Y") if pd.notna(latest_date) else "—"
 st.markdown(
     f"""
-    <div class='hero'>
-      <div class='eyebrow'>OLIVER LESO · PERSONAL MARKET INTELLIGENCE</div>
-      <div class='hero-title'>Equity Research <span style='color:#54E1C1'>Studio</span></div>
-      <div class='hero-sub'>Jedno miesto na screening akcií, porovnávanie trendov, fundamentálnu kontrolu a modelovanie portfóliového rizika. Namiesto náhodných ratingov používa vypočítané ukazovatele a pri každom z nich vysvetľuje, čo znamenajú.</div>
-      <div class='hero-meta'><span class='pill'>LATEST AVAILABLE DAILY DATA</span><span class='pill'>TECHNICALS + FUNDAMENTALS</span><span class='pill'>PORTFOLIO RISK</span><span class='pill'>MONTE CARLO VS S&P 500</span><span class='pill'>DYNAMIC SWOT</span></div>
-      <div style='margin-top:14px'>{chips_html}</div>
+    <div class='topbar'>
+      <div>
+        <div class='eyebrow'>OLIVER LESO · PERSONAL MARKET INTELLIGENCE</div>
+        <div class='brand'>Equity Research <span>Studio</span></div>
+      </div>
+      <div class='snapshot'>Posledná cena: {latest_text} · snapshot {fetched_at}</div>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
 # -----------------------------------------------------------------------------
-# Top-level quick metrics
+# 1. Čísla: karty + tabuľka watchlistu
 # -----------------------------------------------------------------------------
-latest_date = price_df.dropna(how="all").index.max()
 cols = st.columns(4)
 with cols[0]:
     metric_card("Sledované tituly", f"{len(valid_tickers)}", "Akcie a ETF s načítanou cenovou históriou")
 with cols[1]:
-    metric_card("Dátum poslednej ceny", latest_date.strftime("%d.%m.%Y") if pd.notna(latest_date) else "—", "Posledná dostupná denná cena v načítaných dátach")
+    best = metrics.dropna(subset=["3M (%)"]).sort_values("3M (%)", ascending=False)
+    best_text = f"{best.iloc[0]['Ticker']} {fmt_pct_signed(best.iloc[0]['3M (%)'])}" if not best.empty else "—"
+    metric_card("Najlepší 3M výnos", best_text, "Z vybraného watchlistu")
 with cols[2]:
     median_score = metrics["Technické skóre"].median()
-    metric_card("Medián technického skóre", f"{median_score:.2f}/100" if np.isfinite(median_score) else "—", "Opis trendových signálov, nie prognóza výnosu")
+    metric_card("Medián technického skóre", f"{median_score:.0f}/100" if np.isfinite(median_score) else "—", "Opis trendových signálov, nie prognóza výnosu")
 with cols[3]:
     med_vol = metrics["Volatilita (%)"].median()
     metric_card("Medián volatility", fmt_pct(med_vol), "Ročná volatilita odhadnutá z denných výnosov")
 
-st.caption(
-    f"Dátový snapshot načítaný: {fetched_at} (Europe/Prague). "
-    "Denné ceny môžu byť oneskorené a nemusia predstavovať aktuálnu cenu v reálnom čase."
+st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+st.markdown("### Prehľad watchlistu")
+overview = metrics.sort_values("Technické skóre", ascending=False, na_position="last").copy()
+for col in ["1D (%)", "1M (%)", "3M (%)", "6M (%)", "1Y (%)", "Volatilita (%)", "Technické skóre"]:
+    overview[col] = pd.to_numeric(overview[col], errors="coerce")
+display_cols = ["Ticker", "Spoločnosť", "Sektor", "Cena", "Mena", "1D (%)", "3M (%)", "6M (%)", "1Y (%)", "Volatilita (%)", "RSI (14)", "Technické skóre", "Technické signály"]
+st.dataframe(
+    overview[display_cols].style.format(
+        {"Cena": "{:.2f}", "1D (%)": "{:+.2f}%", "3M (%)": "{:+.2f}%", "6M (%)": "{:+.2f}%", "1Y (%)": "{:+.2f}%", "Volatilita (%)": "{:.2f}%", "RSI (14)": "{:.2f}", "Technické skóre": "{:.2f}/100"},
+        na_rep="—",
+    ),
+    use_container_width=True,
+    hide_index=True,
 )
-st.markdown("<div style='height:7px'></div>", unsafe_allow_html=True)
-with st.container(border=True):
-    st.markdown("### ◉ Aktuálne správy z tvojho watchlistu")
-    st.caption(
-        "Zobrazujú sa len články pre tickery, ktoré máš aktuálne vybrané v ľavom paneli. "
-        "Zdroje: tickerové RSS Yahoo Finance; pri chýbajúcom feede záložné Google News."
-    )
+st.caption("Dáta sú denné a môžu byť oneskorené. Historický výnos nezohľadňuje dane ani poplatky.")
+
+# -----------------------------------------------------------------------------
+# 2. Správy: rozbaliteľná sekcia
+# -----------------------------------------------------------------------------
+news_count = len(all_selected_news)
+with st.expander(f"📰 Správy z watchlistu ({news_count})", expanded=False):
     if all_selected_news:
-        for idx, story in enumerate(all_selected_news[:8]):
-            news_cols = st.columns([0.72, 3.6, 1.35])
-            with news_cols[0]:
-                st.markdown(f"`{story['Ticker']}`")
-            with news_cols[1]:
-                st.markdown(f"**{story['Title']}**")
-                if story.get("Summary"):
-                    summary = story["Summary"]
-                    st.write(summary[:260] + ("…" if len(summary) > 260 else ""))
-            with news_cols[2]:
-                st.caption(f"{story.get('Publisher') or story.get('Feed', 'Zdroj')} · {story.get('Published display', 'Dátum neuvedený')}")
-                st.link_button("Otvoriť článok", story["URL"], key=f"top_news_open_{idx}_{story['Ticker']}", use_container_width=True)
-            if idx < min(len(all_selected_news), 8) - 1:
-                st.markdown("<hr style='margin:8px 0;border-color:#263552'>", unsafe_allow_html=True)
-        if len(all_selected_news) > 8:
-            with st.expander(f"Zobraziť všetky správy pre vybrané tickery ({len(all_selected_news)})"):
-                for idx, story in enumerate(all_selected_news):
-                    st.markdown(f"**{story['Ticker']} · {story['Title']}**")
-                    st.caption(f"{story.get('Publisher') or story.get('Feed', 'Zdroj')} · {story.get('Published display', 'Dátum neuvedený')}")
-                    if story.get("Summary"):
-                        st.write(story["Summary"])
-                    st.link_button("Otvoriť pôvodný článok", story["URL"], key=f"all_news_open_{idx}_{story['Ticker']}")
+        ticker_filter = st.multiselect(
+            "Filtrovať podľa tickeru",
+            options=valid_tickers,
+            default=[],
+            key="news_ticker_filter",
+            help="Ak nič nevyberieš, zobrazia sa správy pre všetky tickery.",
+        )
+        shown = [s for s in all_selected_news if not ticker_filter or s["Ticker"] in ticker_filter]
+        if not shown:
+            st.info("Pre zvolené tickery nie sú žiadne správy.")
+        for idx, story in enumerate(shown[:30]):
+            summary = story.get("Summary", "")
+            summary_text = summary[:260] + ("…" if len(summary) > 260 else "")
+            st.markdown(
+                f"""<div class='news-card'>
+                  <div class='news-meta'>{story['Ticker']} · {story.get('Publisher') or story.get('Feed', 'Zdroj')} · {story.get('Published display', 'Dátum neuvedený')}</div>
+                  <div class='news-title'>{html.escape(story['Title'])}</div>
+                  {f"<div class='news-summary'>{html.escape(summary_text)}</div>" if summary_text else ""}
+                </div>""",
+                unsafe_allow_html=True,
+            )
+            st.link_button("Otvoriť článok", story["URL"], key=f"news_open_{idx}_{story['Ticker']}")
     else:
         st.warning(
             "Pre aktuálne vybrané tickery sa nepodarilo načítať žiadne správy. "
-            "Skús tlačidlo „Načítať najnovšie dáta teraz“ alebo skontroluj internetové pripojenie. "
-            "Správy sa nevymýšľajú a prázdny feed sa nepovažuje za dôkaz, že sa nič nestalo."
+            "Skús tlačidlo „Načítať najnovšie dáta“ alebo skontroluj pripojenie."
         )
-        st.caption("Stav feedov: " + "; ".join(f"{t}: {news_status_by_ticker.get(t, 'neznámy stav')}" for t in valid_tickers))
-    no_news_tickers = [t for t in valid_tickers if not news_by_ticker.get(t)]
-    if no_news_tickers and all_selected_news:
-        st.caption("Bez dostupných článkov: " + "; ".join(f"{t} ({news_status_by_ticker.get(t, 'feed nedostupný')})" for t in no_news_tickers))
+    st.caption("Stav feedov: " + "; ".join(f"{t}: {news_status_by_ticker.get(t, 'neznámy stav')}" for t in valid_tickers))
 
-tab_overview, tab_screener, tab_charts, tab_portfolio, tab_fundamentals, tab_swot, tab_glossary = st.tabs(
-    ["◈ Prehľad", "⌕ Stock screener", "↗ Grafy & technika", "⛨ Portfólio & riziko", "▤ Fundamenty", "◩ SWOT analýza", "ⓘ Slovník metrik"]
+# -----------------------------------------------------------------------------
+# 3. Detailné záložky
+# -----------------------------------------------------------------------------
+tab_charts, tab_screener, tab_portfolio, tab_fundamentals, tab_swot, tab_glossary = st.tabs(
+    ["↗ Grafy & technika", "⌕ Screener", "⛨ Portfólio & riziko", "▤ Fundamenty", "◩ SWOT", "ⓘ Slovník"]
 )
 
 # -----------------------------------------------------------------------------
-# TAB 1: overview
+# TAB: charts and technical analysis
 # -----------------------------------------------------------------------------
-with tab_overview:
-    st.markdown("<div class='section-kicker'>01 / Market snapshot</div>", unsafe_allow_html=True)
-    st.subheader("Čo je momentálne na radare")
-    explain_score()
-    overview = metrics.sort_values("Technické skóre", ascending=False, na_position="last").copy()
-    for col in ["1D (%)", "1M (%)", "3M (%)", "6M (%)", "1Y (%)", "Volatilita (%)", "Technické skóre"]:
-        overview[col] = pd.to_numeric(overview[col], errors="coerce")
-    display_cols = ["Ticker", "Spoločnosť", "Sektor", "Cena", "Mena", "1D (%)", "3M (%)", "6M (%)", "1Y (%)", "Volatilita (%)", "RSI (14)", "Technické skóre", "Technické signály"]
-    st.dataframe(
-        overview[display_cols].style.format(
-            {"Cena": "{:.2f}", "1D (%)": "{:+.2f}%", "3M (%)": "{:+.2f}%", "6M (%)": "{:+.2f}%", "1Y (%)": "{:+.2f}%", "Volatilita (%)": "{:.2f}%", "RSI (14)": "{:.2f}", "Technické skóre": "{:.2f}/100"},
-            na_rep="—",
-        ),
-        use_container_width=True,
-        hide_index=True,
-    )
+with tab_charts:
+    st.markdown("<div class='section-kicker'>Price action</div>", unsafe_allow_html=True)
+    st.subheader("Grafy, trendy a výkonnosť")
 
+    perf_col = st.selectbox("Horizont výnosu", ["1D (%)", "1M (%)", "3M (%)", "6M (%)", "1Y (%)"], index=2, key="overview_perf")
     c1, c2 = st.columns([1.25, 1])
     with c1:
-        st.markdown("#### Výkonnosť v porovnaní")
-        perf_col = st.selectbox("Horizont výnosu", ["1D (%)", "1M (%)", "3M (%)", "6M (%)", "1Y (%)"], index=2, key="overview_perf")
         chart_df = metrics[["Ticker", perf_col]].dropna().sort_values(perf_col)
         fig = px.bar(chart_df, x=perf_col, y="Ticker", orientation="h", color=perf_col,
                      color_continuous_scale=[RED, "#64748B", ACCENT], title=f"Výnos za zvolené obdobie · {perf_col.replace(' (%)', '')}")
         fig.update_layout(coloraxis_showscale=False, yaxis_title="", xaxis_title="Výnos (%)")
         fig.update_traces(texttemplate="%{x:+.2f}%", textposition="outside")
         st.plotly_chart(make_plotly_dark(fig, 430), use_container_width=True)
-        st.caption("Historický výnos je spätne meraná zmena ceny; nezohľadňuje dane ani individuálne transakčné náklady.")
     with c2:
-        st.markdown("#### Riziko vs. výkonnosť")
         scatter_df = metrics.dropna(subset=["Volatilita (%)", "3M (%)"]).copy()
         if not scatter_df.empty:
             if scatter_df["Trhová kapitalizácia"].notna().any():
@@ -1120,22 +1117,106 @@ with tab_overview:
             st.plotly_chart(make_plotly_dark(fig, 430), use_container_width=True)
         else:
             st.info("Na zostavenie grafu nie je dosť dát.")
-        st.caption("Vyššia volatilita znamená väčšie kolísanie. Sama osebe nehovorí, či je akcia dobrá alebo zlá investícia.")
 
-    st.markdown("#### Sektorové rozloženie sledovaného zoznamu")
-    sector_counts = metrics.groupby("Sektor", dropna=False).size().reset_index(name="Počet titulov").sort_values("Počet titulov", ascending=False)
-    fig = px.pie(sector_counts, names="Sektor", values="Počet titulov", hole=0.62)
-    fig.update_traces(textposition="inside", textinfo="label+percent")
-    st.plotly_chart(make_plotly_dark(fig, 340), use_container_width=True)
+    st.markdown("#### Detail ceny a indikátorov")
+    chart_ticker = st.selectbox("Ticker", valid_tickers, key="chart_ticker")
+    show_sma = st.multiselect("Kĺzavé priemery", ["SMA 20", "SMA 50", "SMA 200"], default=["SMA 50", "SMA 200"])
+
+    close = price_df[chart_ticker].dropna()
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=close.index, y=close.values, mode="lines", name="Cena (adjusted close)", line=dict(width=2.6, color=ACCENT)))
+    for label, window, color in [("SMA 20", 20, ACCENT_2), ("SMA 50", 50, GOLD), ("SMA 200", 200, RED)]:
+        if label in show_sma and len(close) >= window:
+            sma = close.rolling(window).mean()
+            fig.add_trace(go.Scatter(x=sma.index, y=sma.values, mode="lines", name=label, line=dict(width=1.5, color=color)))
+    fig.update_layout(title=f"{chart_ticker} · upravená historická cena", xaxis_title="Dátum", yaxis_title=f"Cena ({infos.get(chart_ticker, {}).get('currency', 'lokálna mena')})")
+    st.plotly_chart(make_plotly_dark(fig, 480), use_container_width=True)
+
+    ticker_row = metrics.loc[metrics["Ticker"] == chart_ticker].iloc[0]
+    k1, k2, k3, k4, k5 = st.columns(5)
+    k1.metric("RSI (14)", fmt_num(ticker_row["RSI (14)"], 2), "Nad 70: často prekúpené")
+    k2.metric("MACD histogram", fmt_num(ticker_row["MACD histogram"], 3), "Nad nulou = kladný histogram")
+    k3.metric("ATR (14)", fmt_num(ticker_row["ATR (14)"], 2), "Priemerný rozsah pohybu v cene")
+    k4.metric("Od maxima 52W", fmt_pct((ticker_row["Cena"] / ticker_row["52W maximum"] - 1) * 100))
+    k5.metric("Technické skóre", f"{ticker_row['Technické skóre']:.2f}/100" if np.isfinite(ticker_row["Technické skóre"]) else "—")
+
+    with st.expander("Ako sa počíta technické skóre?"):
+        explain_score()
+
+    with st.expander("Kalkulačka veľkosti pozície"):
+        st.caption("Kapitál zadávaj v rovnakej mene, v akej sa obchoduje vybraný ticker. Nezahŕňa poplatky, spread ani dane.")
+        trade_defaults = {
+            "entry": max(float(ticker_row["Cena"]), 0.01),
+            "stop": max(float(ticker_row["Cena"]) * 0.94, 0.01),
+            "target": max(float(ticker_row["Cena"]) * 1.12, 0.01),
+        }
+        tr1, tr2, tr3, tr4, tr5 = st.columns(5)
+        trade_currency = str(ticker_row["Mena"] or "lokálna mena")
+        with tr1:
+            entry_price = st.number_input("Vstupná cena", min_value=0.01, max_value=1_000_000_000.0,
+                                          value=round(trade_defaults["entry"], 2), step=0.01, key=f"entry_{chart_ticker}")
+        with tr2:
+            stop_price = st.number_input("Stop-loss cena", min_value=0.01, max_value=1_000_000_000.0,
+                                         value=round(trade_defaults["stop"], 2), step=0.01, key=f"stop_{chart_ticker}")
+        with tr3:
+            target_price = st.number_input("Cieľová cena", min_value=0.01, max_value=1_000_000_000.0,
+                                           value=round(trade_defaults["target"], 2), step=0.01, key=f"target_{chart_ticker}")
+        with tr4:
+            trade_capital = st.number_input(f"Kapitál ({trade_currency})", min_value=100.0, max_value=1_000_000_000.0,
+                                            value=10_000.0, step=500.0, key=f"trade_capital_{chart_ticker}")
+        with tr5:
+            risk_budget_pct = st.number_input("Max. riziko kapitálu (%)", min_value=0.1, max_value=10.0,
+                                              value=1.0, step=0.1, key=f"risk_pct_{chart_ticker}")
+
+        risk_budget_amount = trade_capital * risk_budget_pct / 100
+        unit_risk = entry_price - stop_price
+        unit_reward = target_price - entry_price
+        if unit_risk <= 0:
+            st.error("Stop-loss musí byť nižšie než vstupná cena, aby sa dala vypočítať riziková veľkosť pozície.")
+        elif unit_reward <= 0:
+            st.warning("Cieľová cena je na alebo pod vstupom. Kalkulačka neukáže kladný pomer výnosu k riziku.")
+        else:
+            shares_by_risk = int(np.floor(risk_budget_amount / unit_risk))
+            shares_by_capital = int(np.floor(trade_capital / entry_price))
+            suggested_units = max(0, min(shares_by_risk, shares_by_capital))
+            position_value = suggested_units * entry_price
+            estimated_loss = suggested_units * unit_risk
+            estimated_gain = suggested_units * unit_reward
+            rr_ratio = unit_reward / unit_risk
+            q1, q2, q3, q4, q5 = st.columns(5)
+            q1.metric("Orientačný počet kusov", f"{suggested_units:,}", "Obmedzené rizikom aj kapitálom")
+            q2.metric("Hodnota pozície", f"{position_value:,.2f} {trade_currency}", f"{position_value / trade_capital * 100:.2f}% kapitálu" if trade_capital > 0 else "—")
+            q3.metric("Riziko pri stop-loss", f"{estimated_loss:,.2f} {trade_currency}", f"Limit: {risk_budget_amount:,.2f} {trade_currency}")
+            q4.metric("Potenciálny zisk pri cieli", f"{estimated_gain:,.2f} {trade_currency}", "Hypotetický, pred nákladmi")
+            q5.metric("Výnos : riziko", f"1 : {rr_ratio:.2f}", "Na jednu akciu")
+            st.markdown("<div class='info-box'><b>Ako čítať kalkulačku:</b> Najprv určíš, koľko kapitálu si ochotný/á riskovať, potom vzdialenosť medzi vstupom a stop-lossom. Počet kusov sa vypočíta z tohto limitu a nikdy neprekročí zadaný kapitál. Stop-loss negarantuje vykonanie presne na zadanej cene, najmä pri cenových medzerách a nízkej likvidite.</div>", unsafe_allow_html=True)
+
+    with st.expander("Porovnanie rastu cien na rovnakej báze"):
+        compare_tickers = st.multiselect("Tickery na porovnanie", valid_tickers,
+                                         default=valid_tickers[: min(4, len(valid_tickers))], key="compare_tickers")
+        if compare_tickers:
+            normalised = price_df[compare_tickers].dropna(how="all")
+            normalised = normalised.apply(lambda s: s / s.dropna().iloc[0] * 100 if s.notna().any() else s)
+            fig = px.line(normalised, x=normalised.index, y=normalised.columns, title="Vývoj ceny: prvá dostupná hodnota = 100")
+            fig.update_layout(xaxis_title="Dátum", yaxis_title="Index (štart = 100)")
+            st.plotly_chart(make_plotly_dark(fig, 420), use_container_width=True)
+            st.caption("Normalizovaný graf porovnáva percentuálny pohyb ceny, nie počet nakúpených kusov ani celkový výnos vrátane dividend.")
+
+    with st.expander("Čo jednotlivé indikátory hovoria"):
+        st.markdown("""
+        - **RSI (14):** oscilátor od 0 do 100, ktorý porovnáva priemerné nedávne zisky a straty. Nad 70 sa často označuje ako prekúpené a pod 30 ako prepredané; nie je to samostatný signál na obchod.
+        - **SMA 20/50/200:** jednoduché kĺzavé priemery za 20, 50 a 200 obchodných dní. Cena nad priemerom môže podporovať pohľad na rastúci trend, ale indikátor za cenou zaostáva.
+        - **MACD histogram:** rozdiel medzi MACD čiarou a jej signálnou čiarou. Kladná hodnota znamená, že MACD je nad signálnou čiarou, nie že cena musí rásť.
+        - **ATR (14):** priemerný skutočný denný rozsah pohybu za 14 dní. Meria veľkosť kolísania v menových jednotkách, nie smer.
+        """)
 
 # -----------------------------------------------------------------------------
-# TAB 2: screener
+# TAB: screener
 # -----------------------------------------------------------------------------
 with tab_screener:
-    st.markdown("<div class='section-kicker'>02 / Opportunity finder</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-kicker'>Opportunity finder</div>", unsafe_allow_html=True)
     st.subheader("Nájdi tituly podľa vlastných kritérií")
     st.markdown("Nastav filtre a zoznam sa prepočíta. Filtre sú pomôcka na zúženie výberu, nie automatický pokyn na nákup.")
-    st.markdown("<div class='info-box'><b>Praktický postup pri výbere akcie:</b> najprv si urč, čo hľadáš (rast, kvalitu firmy, dividendy alebo nižšie kolísanie). Potom porovnaj viac titulov z rovnakého odvetvia, skontroluj výnosy aj riziko a až následne si pozri fundamenty a samotný graf. Jedno číslo samo osebe nestačí.</div>", unsafe_allow_html=True)
 
     f1, f2, f3, f4 = st.columns(4)
     with f1:
@@ -1172,13 +1253,9 @@ with tab_screener:
         avg_vol = filtered["Volatilita (%)"].mean() if not filtered.empty else np.nan
         metric_card("Priemerná volatilita", fmt_pct(avg_vol), "Ročná, vypočítaná z denných výnosov")
 
-    st.markdown("#### Výsledky screenera")
     screener_cols = ["Ticker", "Spoločnosť", "Sektor", "Cena", "Mena", "3M (%)", "6M (%)", "1Y (%)", "Volatilita (%)", "RSI (14)", "P/E (TTM)", "Technické skóre", "Technické signály"]
     if filtered.empty:
         st.warning("Tomuto nastaveniu nevyhovuje žiadny ticker. Uvoľni jeden alebo viac filtrov.")
-        missing_sector_choices = [sector for sector in selected_sectors if sector not in available_sectors]
-        if missing_sector_choices:
-            st.info("Vybrané sektory zatiaľ nemajú tituly v aktívnom zozname: " + ", ".join(missing_sector_choices) + ".")
     else:
         filtered_display = filtered[screener_cols].sort_values("Technické skóre", ascending=False, na_position="last")
         st.dataframe(
@@ -1199,108 +1276,10 @@ with tab_screener:
         """)
 
 # -----------------------------------------------------------------------------
-# TAB 3: charts and technical analysis
-# -----------------------------------------------------------------------------
-with tab_charts:
-    st.markdown("<div class='section-kicker'>03 / Price action</div>", unsafe_allow_html=True)
-    st.subheader("Grafy, trendy a technické indikátory")
-    chart_col1, chart_col2 = st.columns([1, 1])
-    with chart_col1:
-        chart_ticker = st.selectbox("Detailný ticker", valid_tickers, key="chart_ticker")
-    with chart_col2:
-        show_sma = st.multiselect("Zobraziť kĺzavé priemery", ["SMA 20", "SMA 50", "SMA 200"], default=["SMA 50", "SMA 200"])
-
-    close = price_df[chart_ticker].dropna()
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=close.index, y=close.values, mode="lines", name="Cena (adjusted close)", line=dict(width=2.6, color=ACCENT)))
-    for label, window, color in [("SMA 20", 20, ACCENT_2), ("SMA 50", 50, GOLD), ("SMA 200", 200, RED)]:
-        if label in show_sma and len(close) >= window:
-            sma = close.rolling(window).mean()
-            fig.add_trace(go.Scatter(x=sma.index, y=sma.values, mode="lines", name=label, line=dict(width=1.5, color=color)))
-    fig.update_layout(title=f"{chart_ticker} · upravená historická cena", xaxis_title="Dátum", yaxis_title=f"Cena ({infos.get(chart_ticker, {}).get('currency', 'lokálna mena')})")
-    st.plotly_chart(make_plotly_dark(fig, 480), use_container_width=True)
-
-    ticker_row = metrics.loc[metrics["Ticker"] == chart_ticker].iloc[0]
-    k1, k2, k3, k4, k5 = st.columns(5)
-    k1.metric("RSI (14)", fmt_num(ticker_row["RSI (14)"], 2), "Nad 70: často prekúpené")
-    k2.metric("MACD histogram", fmt_num(ticker_row["MACD histogram"], 3), "Nad nulou = kladný histogram")
-    k3.metric("ATR (14)", fmt_num(ticker_row["ATR (14)"], 2), "Priemerný rozsah pohybu v cene")
-    k4.metric("Od maxima 52W", fmt_pct((ticker_row["Cena"] / ticker_row["52W maximum"] - 1) * 100))
-    k5.metric("Technické skóre", f"{ticker_row['Technické skóre']:.2f}/100" if np.isfinite(ticker_row["Technické skóre"]) else "—")
-
-    st.markdown("#### Kalkulačka veľkosti pozície")
-    st.caption("Kapitál zadávaj v rovnakej mene, v akej sa obchoduje vybraný ticker. Nezahŕňa poplatky, spread ani dane.")
-    trade_defaults = {
-        "entry": max(float(ticker_row["Cena"]), 0.01),
-        "stop": max(float(ticker_row["Cena"]) * 0.94, 0.01),
-        "target": max(float(ticker_row["Cena"]) * 1.12, 0.01),
-    }
-    tr1, tr2, tr3, tr4, tr5 = st.columns(5)
-    trade_currency = str(ticker_row["Mena"] or "lokálna mena")
-    with tr1:
-        entry_price = st.number_input("Vstupná cena", min_value=0.01, max_value=1_000_000_000.0,
-                                      value=round(trade_defaults["entry"], 2), step=0.01, key=f"entry_{chart_ticker}")
-    with tr2:
-        stop_price = st.number_input("Stop-loss cena", min_value=0.01, max_value=1_000_000_000.0,
-                                     value=round(trade_defaults["stop"], 2), step=0.01, key=f"stop_{chart_ticker}")
-    with tr3:
-        target_price = st.number_input("Cieľová cena", min_value=0.01, max_value=1_000_000_000.0,
-                                       value=round(trade_defaults["target"], 2), step=0.01, key=f"target_{chart_ticker}")
-    with tr4:
-        trade_capital = st.number_input(f"Kapitál ({trade_currency})", min_value=100.0, max_value=1_000_000_000.0,
-                                        value=10_000.0, step=500.0, key=f"trade_capital_{chart_ticker}")
-    with tr5:
-        risk_budget_pct = st.number_input("Max. riziko kapitálu (%)", min_value=0.1, max_value=10.0,
-                                          value=1.0, step=0.1, key=f"risk_pct_{chart_ticker}")
-
-    risk_budget_amount = trade_capital * risk_budget_pct / 100
-    unit_risk = entry_price - stop_price
-    unit_reward = target_price - entry_price
-    if unit_risk <= 0:
-        st.error("Stop-loss musí byť nižšie než vstupná cena, aby sa dala vypočítať riziková veľkosť pozície.")
-    elif unit_reward <= 0:
-        st.warning("Cieľová cena je na alebo pod vstupom. Kalkulačka neukáže kladný pomer výnosu k riziku.")
-    else:
-        shares_by_risk = int(np.floor(risk_budget_amount / unit_risk))
-        shares_by_capital = int(np.floor(trade_capital / entry_price))
-        suggested_units = max(0, min(shares_by_risk, shares_by_capital))
-        position_value = suggested_units * entry_price
-        estimated_loss = suggested_units * unit_risk
-        estimated_gain = suggested_units * unit_reward
-        rr_ratio = unit_reward / unit_risk
-        q1, q2, q3, q4, q5 = st.columns(5)
-        q1.metric("Orientačný počet kusov", f"{suggested_units:,}", "Obmedzené rizikom aj kapitálom")
-        q2.metric("Hodnota pozície", f"{position_value:,.2f} {trade_currency}", f"{position_value / trade_capital * 100:.2f}% kapitálu" if trade_capital > 0 else "—")
-        q3.metric("Riziko pri stop-loss", f"{estimated_loss:,.2f} {trade_currency}", f"Limit: {risk_budget_amount:,.2f} {trade_currency}")
-        q4.metric("Potenciálny zisk pri cieli", f"{estimated_gain:,.2f} {trade_currency}", "Hypotetický, pred nákladmi")
-        q5.metric("Výnos : riziko", f"1 : {rr_ratio:.2f}", "Na jednu akciu")
-        st.markdown("<div class='info-box'><b>Ako čítať kalkulačku:</b> Najprv určíš, koľko kapitálu si ochotný/á riskovať, potom vzdialenosť medzi vstupom a stop-lossom. Počet kusov sa vypočíta z tohto limitu a nikdy neprekročí zadaný kapitál. Stop-loss negarantuje vykonanie presne na zadanej cene, najmä pri cenových medzerách a nízkej likvidite.</div>", unsafe_allow_html=True)
-
-    st.markdown("#### Porovnanie rastu cien")
-    compare_tickers = st.multiselect("Porovnaj tickery na rovnakej štartovacej báze", valid_tickers,
-                                    default=valid_tickers[: min(4, len(valid_tickers))], key="compare_tickers")
-    if compare_tickers:
-        normalised = price_df[compare_tickers].dropna(how="all")
-        normalised = normalised.apply(lambda s: s / s.dropna().iloc[0] * 100 if s.notna().any() else s)
-        fig = px.line(normalised, x=normalised.index, y=normalised.columns, title="Vývoj ceny: prvá dostupná hodnota = 100")
-        fig.update_layout(xaxis_title="Dátum", yaxis_title="Index (štart = 100)")
-        st.plotly_chart(make_plotly_dark(fig, 420), use_container_width=True)
-        st.caption("Normalizovaný graf porovnáva percentuálny pohyb ceny, nie počet nakúpených kusov ani celkový výnos vrátane všetkých dividend.")
-
-    st.markdown("#### Čo jednotlivé indikátory hovoria")
-    with st.expander("RSI, SMA, MACD a ATR – stručný výklad"):
-        st.markdown("""
-        - **RSI (14):** oscilátor od 0 do 100, ktorý porovnáva priemerné nedávne zisky a straty. Nad 70 sa často označuje ako prekúpené a pod 30 ako prepredané; nie je to samostatný signál na obchod.
-        - **SMA 20/50/200:** jednoduché kĺzavé priemery za 20, 50 a 200 obchodných dní. Cena nad priemerom môže podporovať pohľad na rastúci trend, ale indikátor za cenou zaostáva.
-        - **MACD histogram:** rozdiel medzi MACD čiarou a jej signálnou čiarou. Kladná hodnota znamená, že MACD je nad signálnou čiarou, nie že cena musí rásť.
-        - **ATR (14):** priemerný skutočný denný rozsah pohybu za 14 dní. Meria veľkosť kolísania v menových jednotkách, nie smer.
-        """)
-
-# -----------------------------------------------------------------------------
-# TAB 4: portfolio construction and risk
+# TAB: portfolio construction and risk
 # -----------------------------------------------------------------------------
 with tab_portfolio:
-    st.markdown("<div class='section-kicker'>04 / Portfolio laboratory</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-kicker'>Portfolio laboratory</div>", unsafe_allow_html=True)
     st.subheader("Model rozdelenia kapitálu a rizikový profil")
     asset_vol = metrics.set_index("Ticker")["Volatilita (%)"].reindex(valid_tickers) / 100.0
     if allocation_method == "Rovnaká váha":
@@ -1375,143 +1354,143 @@ with tab_portfolio:
             fig_corr.update_layout(coloraxis_colorbar=dict(title="Korelácia"))
             st.plotly_chart(make_plotly_dark(fig_corr, max(330, len(valid_tickers) * 28)), use_container_width=True)
 
-    st.markdown("#### Monte Carlo: možné scenáre, nie predpoveď")
-    m1, m2 = st.columns(2)
-    with m1:
-        mc_days = st.slider("Simulačný horizont (obchodné dni)", 21, 756, 252, 21)
-    with m2:
-        mc_sims = st.select_slider("Počet simulácií", options=[250, 500, 1000, 2000, 4000], value=1000)
+    with st.expander("Monte Carlo: možné scenáre, nie predpoveď", expanded=False):
+        m1, m2 = st.columns(2)
+        with m1:
+            mc_days = st.slider("Simulačný horizont (obchodné dni)", 21, 756, 252, 21)
+        with m2:
+            mc_sims = st.select_slider("Počet simulácií", options=[250, 500, 1000, 2000, 4000], value=1000)
 
-    sp500_ticker = "SPY" if "SPY" in prices_all.columns else ("^GSPC" if "^GSPC" in prices_all.columns else None)
-    sp500_returns = (prices_all[sp500_ticker].pct_change(fill_method=None).dropna()
-                     if sp500_ticker else pd.Series(dtype=float))
-    rng = np.random.default_rng(2026)
-    historical = portfolio_returns.replace([np.inf, -np.inf], np.nan).dropna().to_numpy(dtype=float)
-    historical = historical[np.isfinite(historical) & (historical > -1)]
-    sp500_historical = sp500_returns.replace([np.inf, -np.inf], np.nan).dropna().to_numpy(dtype=float)
-    sp500_historical = sp500_historical[np.isfinite(sp500_historical) & (sp500_historical > -1)]
+        sp500_ticker = "SPY" if "SPY" in prices_all.columns else ("^GSPC" if "^GSPC" in prices_all.columns else None)
+        sp500_returns = (prices_all[sp500_ticker].pct_change(fill_method=None).dropna()
+                         if sp500_ticker else pd.Series(dtype=float))
+        rng = np.random.default_rng(2026)
+        historical = portfolio_returns.replace([np.inf, -np.inf], np.nan).dropna().to_numpy(dtype=float)
+        historical = historical[np.isfinite(historical) & (historical > -1)]
+        sp500_historical = sp500_returns.replace([np.inf, -np.inf], np.nan).dropna().to_numpy(dtype=float)
+        sp500_historical = sp500_historical[np.isfinite(sp500_historical) & (sp500_historical > -1)]
 
-    if len(historical) >= 20:
-        sampled = rng.choice(historical, size=(mc_days, mc_sims), replace=True)
-        simulated_paths = capital * np.cumprod(1 + sampled, axis=0)
-        final_values = simulated_paths[-1, :]
-        x_days = np.arange(1, mc_days + 1)
-        low_band = np.percentile(simulated_paths, 5, axis=1)
-        high_band = np.percentile(simulated_paths, 95, axis=1)
-        median_path = np.median(simulated_paths, axis=1)
+        if len(historical) >= 20:
+            sampled = rng.choice(historical, size=(mc_days, mc_sims), replace=True)
+            simulated_paths = capital * np.cumprod(1 + sampled, axis=0)
+            final_values = simulated_paths[-1, :]
+            x_days = np.arange(1, mc_days + 1)
+            low_band = np.percentile(simulated_paths, 5, axis=1)
+            high_band = np.percentile(simulated_paths, 95, axis=1)
+            median_path = np.median(simulated_paths, axis=1)
 
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=x_days, y=high_band, mode="lines", line=dict(width=0), showlegend=False, name="95. percentil portfólia"))
-        fig.add_trace(go.Scatter(x=x_days, y=low_band, mode="lines", line=dict(width=0), fill="tonexty",
-                                 fillcolor="rgba(140,168,255,.15)", name="Portfólio · rozpätie 5.–95. percentil"))
-        for j in range(min(60, mc_sims)):
-            fig.add_trace(go.Scatter(x=x_days, y=simulated_paths[:, j], mode="lines", line=dict(color="rgba(84,225,193,.12)", width=1), showlegend=False))
-        fig.add_trace(go.Scatter(x=x_days, y=median_path, mode="lines", line=dict(color=ACCENT, width=3), name="Portfólio · medián"))
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=x_days, y=high_band, mode="lines", line=dict(width=0), showlegend=False, name="95. percentil portfólia"))
+            fig.add_trace(go.Scatter(x=x_days, y=low_band, mode="lines", line=dict(width=0), fill="tonexty",
+                                     fillcolor="rgba(140,168,255,.15)", name="Portfólio · rozpätie 5.–95. percentil"))
+            for j in range(min(60, mc_sims)):
+                fig.add_trace(go.Scatter(x=x_days, y=simulated_paths[:, j], mode="lines", line=dict(color="rgba(84,225,193,.12)", width=1), showlegend=False))
+            fig.add_trace(go.Scatter(x=x_days, y=median_path, mode="lines", line=dict(color=ACCENT, width=3), name="Portfólio · medián"))
 
-        sp500_final_values = np.array([])
-        sp500_median_path = None
-        if len(sp500_historical) >= 20:
-            sp500_sampled = rng.choice(sp500_historical, size=(mc_days, mc_sims), replace=True)
-            sp500_paths = capital * np.cumprod(1 + sp500_sampled, axis=0)
-            sp500_final_values = sp500_paths[-1, :]
-            sp500_median_path = np.median(sp500_paths, axis=1)
-            fig.add_trace(go.Scatter(x=x_days, y=sp500_median_path, mode="lines",
-                                     line=dict(color=GOLD, width=3, dash="dash"), name=f"S&P 500 · medián ({sp500_ticker})"))
+            sp500_final_values = np.array([])
+            sp500_median_path = None
+            if len(sp500_historical) >= 20:
+                sp500_sampled = rng.choice(sp500_historical, size=(mc_days, mc_sims), replace=True)
+                sp500_paths = capital * np.cumprod(1 + sp500_sampled, axis=0)
+                sp500_final_values = sp500_paths[-1, :]
+                sp500_median_path = np.median(sp500_paths, axis=1)
+                fig.add_trace(go.Scatter(x=x_days, y=sp500_median_path, mode="lines",
+                                         line=dict(color=GOLD, width=3, dash="dash"), name=f"S&P 500 · medián ({sp500_ticker})"))
+            else:
+                st.warning("S&P 500 benchmark nemá dosť historických výnosov na simuláciu.")
+
+            fig.update_layout(title=f"Monte Carlo porovnanie · {mc_sims:,} ciest · {mc_days} obchodných dní",
+                              xaxis_title="Obchodný deň", yaxis_title="Modelová hodnota (€)")
+            st.plotly_chart(make_plotly_dark(fig, 460), use_container_width=True)
+            st.caption(f"Každý model začína rovnakým kapitálom {capital:,.2f} €. S&P 500 je reprezentovaný {sp500_ticker or 'nedostupným benchmarkom'}.")
+
+            q05, q50, q95 = np.percentile(final_values, [5, 50, 95])
+            if len(sp500_final_values):
+                sp_q50 = float(np.percentile(sp500_final_values, 50))
+                diff_q50 = q50 - sp_q50
+                qcols = st.columns(5)
+                qcols[0].metric("Portfólio · 5. percentil", f"{q05:,.2f} €", fmt_pct_signed((q05 / capital - 1) * 100))
+                qcols[1].metric("Portfólio · medián", f"{q50:,.2f} €", fmt_pct_signed((q50 / capital - 1) * 100))
+                qcols[2].metric("S&P 500 · medián", f"{sp_q50:,.2f} €", fmt_pct_signed((sp_q50 / capital - 1) * 100))
+                qcols[3].metric("Rozdiel mediánov", f"{diff_q50:+,.2f} €", "Portfólio mínus S&P 500")
+                qcols[4].metric("Portfólio · 95. percentil", f"{q95:,.2f} €", fmt_pct_signed((q95 / capital - 1) * 100))
+            else:
+                qcols = st.columns(3)
+                qcols[0].metric("Slabší scenár · 5. percentil", f"{q05:,.2f} €", fmt_pct_signed((q05 / capital - 1) * 100))
+                qcols[1].metric("Medián simulácií", f"{q50:,.2f} €", fmt_pct_signed((q50 / capital - 1) * 100))
+                qcols[2].metric("Silnejší scenár · 95. percentil", f"{q95:,.2f} €", fmt_pct_signed((q95 / capital - 1) * 100))
+
+            st.markdown("#### Medián každej vybranej akcie oproti S&P 500")
+            st.caption("Každá čiara samostatne modeluje investíciu celého zadaného kapitálu do jednej akcie. Nejde o vážené portfólio.")
+            compare_mc_tickers = st.multiselect(
+                "Akcie zahrnuté do porovnania",
+                options=valid_tickers,
+                default=valid_tickers,
+                key="mc_compare_tickers",
+                help="Predvolene sú zahrnuté všetky načítané akcie a ETF. Odznačením zúžiš graf, ak je príliš hustý.",
+            )
+            fig_compare = go.Figure()
+            summary_rows: list[dict[str, Any]] = []
+            if len(sp500_historical) >= 20:
+                summary_rows.append({
+                    "Ticker": "S&P 500",
+                    "Medián hodnoty (€)": float(np.percentile(sp500_final_values, 50)) if len(sp500_final_values) else np.nan,
+                    "Medián výnosu (%)": (float(np.percentile(sp500_final_values, 50)) / capital - 1) * 100 if len(sp500_final_values) else np.nan,
+                    "5. percentil (€)": float(np.percentile(sp500_final_values, 5)) if len(sp500_final_values) else np.nan,
+                    "95. percentil (€)": float(np.percentile(sp500_final_values, 95)) if len(sp500_final_values) else np.nan,
+                    "Simulácie končiace stratou (%)": float(np.mean(sp500_final_values < capital) * 100) if len(sp500_final_values) else np.nan,
+                })
+                fig_compare.add_trace(go.Scatter(x=x_days, y=sp500_median_path, mode="lines",
+                                                 line=dict(color=GOLD, width=3.5, dash="dash"), name=f"S&P 500 ({sp500_ticker})"))
+
+            palette = [ACCENT, ACCENT_2, "#FF9E80", "#DDA0DD", "#69D2E7", "#C3E88D", "#FF8FAB", "#B8C0FF", "#F4A261"]
+            for idx, ticker in enumerate(compare_mc_tickers):
+                if ticker not in prices_all.columns:
+                    continue
+                ticker_returns = prices_all[ticker].pct_change(fill_method=None).dropna().to_numpy(dtype=float)
+                ticker_returns = ticker_returns[np.isfinite(ticker_returns) & (ticker_returns > -1)]
+                if len(ticker_returns) < 20:
+                    continue
+                ticker_sampled = rng.choice(ticker_returns, size=(mc_days, mc_sims), replace=True)
+                ticker_paths = capital * np.cumprod(1 + ticker_sampled, axis=0)
+                ticker_median = np.median(ticker_paths, axis=1)
+                ticker_final = ticker_paths[-1, :]
+                fig_compare.add_trace(go.Scatter(x=x_days, y=ticker_median, mode="lines",
+                                                 line=dict(color=palette[idx % len(palette)], width=1.8), name=ticker))
+                summary_rows.append({
+                    "Ticker": ticker,
+                    "Medián hodnoty (€)": float(np.percentile(ticker_final, 50)),
+                    "Medián výnosu (%)": (float(np.percentile(ticker_final, 50)) / capital - 1) * 100,
+                    "5. percentil (€)": float(np.percentile(ticker_final, 5)),
+                    "95. percentil (€)": float(np.percentile(ticker_final, 95)),
+                    "Simulácie končiace stratou (%)": float(np.mean(ticker_final < capital) * 100),
+                })
+            fig_compare.update_layout(title="Mediánová cesta: jednotlivé tickery vs. S&P 500",
+                                      xaxis_title="Obchodný deň", yaxis_title="Modelová hodnota (€)")
+            st.plotly_chart(make_plotly_dark(fig_compare, 500), use_container_width=True)
+            if summary_rows:
+                summary_df = pd.DataFrame(summary_rows).sort_values("Medián výnosu (%)", ascending=False, na_position="last")
+                st.markdown("#### Porovnávacia tabuľka výsledkov")
+                st.dataframe(summary_df.style.format({
+                    "Medián hodnoty (€)": "{:,.2f} €", "Medián výnosu (%)": "{:+.2f}%",
+                    "5. percentil (€)": "{:,.2f} €", "95. percentil (€)": "{:,.2f} €",
+                    "Simulácie končiace stratou (%)": "{:.2f}%",
+                }, na_rep="—"), use_container_width=True, hide_index=True)
+                st.download_button("⬇ Stiahnuť Monte Carlo porovnanie do CSV",
+                                   data=summary_df.to_csv(index=False).encode("utf-8-sig"),
+                                   file_name="oliver_leso_monte_carlo_comparison.csv", mime="text/csv")
+            st.markdown("<div class='warning-box'><b>Ako interpretovať:</b> Medián je prostredná hodnota nasimulovaných scenárov, nie predpoveď. S&P 500 slúži ako porovnávací benchmark. Individuálne akcie sú simulované samostatne, takže druhý graf neuchováva historické korelácie medzi akciami. Model nezachytáva spoľahlivo zmenu trhového režimu, budúce nečakané udalosti, poplatky, dane ani menové konverzie.</div>", unsafe_allow_html=True)
         else:
-            st.warning("S&P 500 benchmark nemá dosť historických výnosov na simuláciu.")
-
-        fig.update_layout(title=f"Monte Carlo porovnanie · {mc_sims:,} ciest · {mc_days} obchodných dní",
-                          xaxis_title="Obchodný deň", yaxis_title="Modelová hodnota (€)")
-        st.plotly_chart(make_plotly_dark(fig, 460), use_container_width=True)
-        st.caption(f"Každý model začína rovnakým kapitálom {capital:,.2f} €. S&P 500 je reprezentovaný {sp500_ticker or 'nedostupným benchmarkom'}.")
-
-        q05, q50, q95 = np.percentile(final_values, [5, 50, 95])
-        if len(sp500_final_values):
-            sp_q50 = float(np.percentile(sp500_final_values, 50))
-            diff_q50 = q50 - sp_q50
-            qcols = st.columns(5)
-            qcols[0].metric("Portfólio · 5. percentil", f"{q05:,.2f} €", fmt_pct_signed((q05 / capital - 1) * 100))
-            qcols[1].metric("Portfólio · medián", f"{q50:,.2f} €", fmt_pct_signed((q50 / capital - 1) * 100))
-            qcols[2].metric("S&P 500 · medián", f"{sp_q50:,.2f} €", fmt_pct_signed((sp_q50 / capital - 1) * 100))
-            qcols[3].metric("Rozdiel mediánov", f"{diff_q50:+,.2f} €", "Portfólio mínus S&P 500")
-            qcols[4].metric("Portfólio · 95. percentil", f"{q95:,.2f} €", fmt_pct_signed((q95 / capital - 1) * 100))
-        else:
-            qcols = st.columns(3)
-            qcols[0].metric("Slabší scenár · 5. percentil", f"{q05:,.2f} €", fmt_pct_signed((q05 / capital - 1) * 100))
-            qcols[1].metric("Medián simulácií", f"{q50:,.2f} €", fmt_pct_signed((q50 / capital - 1) * 100))
-            qcols[2].metric("Silnejší scenár · 95. percentil", f"{q95:,.2f} €", fmt_pct_signed((q95 / capital - 1) * 100))
-
-        st.markdown("#### Druhý graf · medián každej vybranej akcie oproti S&P 500")
-        st.caption("Každá čiara samostatne modeluje investíciu celého zadaného kapitálu do jednej akcie. Nejde o vážené portfólio.")
-        compare_mc_tickers = st.multiselect(
-            "Akcie zahrnuté do porovnania",
-            options=valid_tickers,
-            default=valid_tickers,
-            key="mc_compare_tickers",
-            help="Predvolene sú zahrnuté všetky načítané akcie a ETF. Odznačením zúžiš graf, ak je príliš hustý.",
-        )
-        fig_compare = go.Figure()
-        summary_rows: list[dict[str, Any]] = []
-        if len(sp500_historical) >= 20:
-            summary_rows.append({
-                "Ticker": "S&P 500",
-                "Medián hodnoty (€)": float(np.percentile(sp500_final_values, 50)) if len(sp500_final_values) else np.nan,
-                "Medián výnosu (%)": (float(np.percentile(sp500_final_values, 50)) / capital - 1) * 100 if len(sp500_final_values) else np.nan,
-                "5. percentil (€)": float(np.percentile(sp500_final_values, 5)) if len(sp500_final_values) else np.nan,
-                "95. percentil (€)": float(np.percentile(sp500_final_values, 95)) if len(sp500_final_values) else np.nan,
-                "Simulácie končiace stratou (%)": float(np.mean(sp500_final_values < capital) * 100) if len(sp500_final_values) else np.nan,
-            })
-            fig_compare.add_trace(go.Scatter(x=x_days, y=sp500_median_path, mode="lines",
-                                             line=dict(color=GOLD, width=3.5, dash="dash"), name=f"S&P 500 ({sp500_ticker})"))
-
-        palette = [ACCENT, ACCENT_2, "#FF9E80", "#DDA0DD", "#69D2E7", "#C3E88D", "#FF8FAB", "#B8C0FF", "#F4A261"]
-        for idx, ticker in enumerate(compare_mc_tickers):
-            if ticker not in prices_all.columns:
-                continue
-            ticker_returns = prices_all[ticker].pct_change(fill_method=None).dropna().to_numpy(dtype=float)
-            ticker_returns = ticker_returns[np.isfinite(ticker_returns) & (ticker_returns > -1)]
-            if len(ticker_returns) < 20:
-                continue
-            ticker_sampled = rng.choice(ticker_returns, size=(mc_days, mc_sims), replace=True)
-            ticker_paths = capital * np.cumprod(1 + ticker_sampled, axis=0)
-            ticker_median = np.median(ticker_paths, axis=1)
-            ticker_final = ticker_paths[-1, :]
-            fig_compare.add_trace(go.Scatter(x=x_days, y=ticker_median, mode="lines",
-                                             line=dict(color=palette[idx % len(palette)], width=1.8), name=ticker))
-            summary_rows.append({
-                "Ticker": ticker,
-                "Medián hodnoty (€)": float(np.percentile(ticker_final, 50)),
-                "Medián výnosu (%)": (float(np.percentile(ticker_final, 50)) / capital - 1) * 100,
-                "5. percentil (€)": float(np.percentile(ticker_final, 5)),
-                "95. percentil (€)": float(np.percentile(ticker_final, 95)),
-                "Simulácie končiace stratou (%)": float(np.mean(ticker_final < capital) * 100),
-            })
-        fig_compare.update_layout(title="Mediánová cesta: jednotlivé tickery vs. S&P 500",
-                                  xaxis_title="Obchodný deň", yaxis_title="Modelová hodnota (€)")
-        st.plotly_chart(make_plotly_dark(fig_compare, 500), use_container_width=True)
-        if summary_rows:
-            summary_df = pd.DataFrame(summary_rows).sort_values("Medián výnosu (%)", ascending=False, na_position="last")
-            st.markdown("#### Porovnávacia tabuľka výsledkov")
-            st.dataframe(summary_df.style.format({
-                "Medián hodnoty (€)": "{:,.2f} €", "Medián výnosu (%)": "{:+.2f}%",
-                "5. percentil (€)": "{:,.2f} €", "95. percentil (€)": "{:,.2f} €",
-                "Simulácie končiace stratou (%)": "{:.2f}%",
-            }, na_rep="—"), use_container_width=True, hide_index=True)
-            st.download_button("⬇ Stiahnuť Monte Carlo porovnanie do CSV",
-                               data=summary_df.to_csv(index=False).encode("utf-8-sig"),
-                               file_name="oliver_leso_monte_carlo_comparison.csv", mime="text/csv")
-        st.markdown("<div class='warning-box'><b>Ako interpretovať:</b> Medián je prostredná hodnota nasimulovaných scenárov, nie predpoveď. S&P 500 slúži ako porovnávací benchmark. Individuálne akcie sú simulované samostatne, takže druhý graf neuchováva historické korelácie medzi akciami. Model nezachytáva spoľahlivo zmenu trhového režimu, budúce nečakané udalosti, poplatky, dane ani menové konverzie.</div>", unsafe_allow_html=True)
-    else:
-        st.warning("Na Monte Carlo simuláciu je potrebných aspoň 20 dostupných historických denných výnosov portfólia.")
+            st.warning("Na Monte Carlo simuláciu je potrebných aspoň 20 dostupných historických denných výnosov portfólia.")
 
     st.markdown("<div class='info-box'><b>Ako čítať portfóliové riziko:</b> Ročná volatilita odhaduje veľkosť bežných výkyvov, max drawdown ukazuje najväčší pozorovaný prepad od vrcholu, VaR približuje hranicu zlého dňa a CVaR priemernú stratu v najhorších 5 % dní. Každá metrika opisuje iný aspekt rizika, preto ich čítaj spolu.</div>", unsafe_allow_html=True)
     st.markdown("<div class='warning-box'><b>Limit modelu:</b> Inverzná volatilita nie je plná risk parity. Neoptimalizuje korelácie a nezaručuje rovnaký príspevok každého aktíva k riziku. Historické metriky nepredpovedajú budúce straty a výsledok nemusí zahŕňať dividendy, poplatky, dane ani menové konverzie.</div>", unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# TAB 5: fundamentals
+# TAB: fundamentals
 # -----------------------------------------------------------------------------
 with tab_fundamentals:
-    st.markdown("<div class='section-kicker'>05 / Business quality</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-kicker'>Business quality</div>", unsafe_allow_html=True)
     st.subheader("Fundamenty a valuácia spoločností")
     st.markdown("Údaje pochádzajú z dostupných polí Yahoo Finance. Pomlčka znamená chýbajúcu hodnotu, nie nulu.")
 
@@ -1566,10 +1545,10 @@ with tab_fundamentals:
         metric_card("Čistý zisk", pretty_large(profile_metrics["Čistý zisk"]), "Posledná dostupná hodnota")
 
 # -----------------------------------------------------------------------------
-# TAB 6: SWOT
+# TAB: SWOT
 # -----------------------------------------------------------------------------
 with tab_swot:
-    st.markdown("<div class='section-kicker'>06 / Company-specific review</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-kicker'>Company-specific review</div>", unsafe_allow_html=True)
     st.subheader("SWOT analýza vybranej spoločnosti")
     st.markdown("Vyber ľubovoľný načítaný ticker. SWOT kombinuje fundamentálne a technické ukazovatele s nedávnymi správami pre tento konkrétny ticker.")
     st.markdown("<div class='warning-box'><b>Ako funguje mediálna časť SWOT:</b> aplikácia používa titulok a krátky popis z RSS feedu. Kľúčové slová len navrhnú kategóriu. Nie je to plnohodnotné prečítanie článku ani spoľahlivý AI sentiment; pred rozhodnutím otvor zdroj a over kontext.</div>", unsafe_allow_html=True)
@@ -1634,10 +1613,10 @@ with tab_swot:
     st.caption(f"Cenové a fundamentálne údaje: Yahoo Finance cez yfinance, snapshot {fetched_at} (Europe/Prague). SWOT prahy aj klasifikácia správ sú orientačné a môžu sa mýliť.")
 
 # -----------------------------------------------------------------------------
-# TAB 7: glossary
+# TAB: glossary
 # -----------------------------------------------------------------------------
 with tab_glossary:
-    st.markdown("<div class='section-kicker'>07 / Learn the metrics</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-kicker'>Learn the metrics</div>", unsafe_allow_html=True)
     st.subheader("Slovník metrík bez zbytočného žargónu")
     glossary = [
         ("Ticker", "Ticker je burzový symbol, ktorým identifikuješ obchodovaný nástroj. Napríklad AAPL označuje akcie Apple a SPY ETF sledujúci index S&P 500.", "Vždy skontroluj, či symbol označuje správnu firmu, burzu a menu. Jedna firma môže mať viac symbolov podľa burzy alebo triedy akcií.", "Ak zadáš ASML, aplikácia sa pokúsi načítať tento symbol z Yahoo Finance. Pre európsku kotáciu môže byť potrebný symbol s príponou burzy.", "Ticker sám osebe nehovorí nič o kvalite ani o tom, či je akcia lacná."),
