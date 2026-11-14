@@ -6,6 +6,7 @@ Educational tool only; it is not investment advice.
 from __future__ import annotations
 
 import json
+import time
 import uuid
 import html
 import re
@@ -252,27 +253,6 @@ def kpi_card(label: str, value: str, note: str, tone: str = "neutral") -> None:
     )
 
 
-@st.cache_data(ttl=86400, show_spinner=False)
-def translate_sk(text: str) -> tuple[str, str | None]:
-    """Preloží text do slovenčiny. Vracia (text, chybová správa alebo None)."""
-    if not text:
-        return text, None
-    try:
-        from deep_translator import GoogleTranslator
-    except Exception as exc:
-        return text, f"Knižnica na preklad nie je nainštalovaná ({type(exc).__name__})."
-    try:
-        translator = GoogleTranslator(source="en", target="sk")
-        chunks = [text[i:i + 4000] for i in range(0, len(text), 4000)]
-        translated = []
-        for chunk in chunks:
-            result = translator.translate(chunk)
-            translated.append(result or chunk)
-        return " ".join(translated), None
-    except Exception as exc:
-        return text, f"Preklad zlyhal ({type(exc).__name__}: {str(exc)[:120]})."
-
-
 # Curated examples across the 11 main equity sectors, plus common broad-market ETFs.
 # This is a starter universe, not an exhaustive list. ANY Yahoo Finance ticker can be added.
 SECTOR_TICKERS = {
@@ -461,7 +441,6 @@ def load_market_data(tickers: tuple[str, ...], period: str, refresh_key: str, ba
     closes: dict[str, pd.Series] = {}
     highs: dict[str, pd.Series] = {}
     lows: dict[str, pd.Series] = {}
-    volumes: dict[str, pd.Series] = {}
     infos: dict[str, dict[str, Any]] = {}
 
     for ticker in tickers:
@@ -519,7 +498,7 @@ def load_market_data(tickers: tuple[str, ...], period: str, refresh_key: str, ba
         return pd.concat(series_map.values(), axis=1).sort_index() if series_map else pd.DataFrame()
 
     fetched_at = pd.Timestamp.now(tz="Europe/Prague").strftime("%d.%m.%Y %H:%M:%S")
-    return _stack(closes), _stack(highs), _stack(lows), _stack({}), infos, errors, fetched_at
+    return _stack(closes), _stack(highs), _stack(lows), pd.DataFrame(), infos, errors, fetched_at
 
 
 def refresh_data() -> None:
@@ -934,14 +913,15 @@ WATCHLIST_COOKIE = "oliver_watchlist"
 cookie_manager = stx.CookieManager(key="watchlist_cookies")
 
 if "watchlist_restored" not in st.session_state:
-    # Cookie sa po prvom behu prehliadača doručí až pri ďalšom rerune, preto krátke čakanie.
+    # Cookie sa do aplikácie načíta až v ďalšom behu, preto krátko počkáme.
     saved_raw = cookie_manager.get(WATCHLIST_COOKIE)
-    if saved_raw is None and st.session_state.get("_cookie_wait", 0) < 2:
+    if saved_raw is None and st.session_state.get("_cookie_wait", 0) < 5:
         st.session_state["_cookie_wait"] = st.session_state.get("_cookie_wait", 0) + 1
+        time.sleep(0.3)
         st.rerun()
     if saved_raw:
         try:
-            restored = [s for s in json.loads(saved_raw) if isinstance(s, str)]
+            restored = [s for s in json.loads(urllib.parse.unquote(saved_raw)) if isinstance(s, str)]
             st.session_state["ticker_selection"] = restored[:MAX_TICKERS]
         except (ValueError, TypeError):
             pass  # poškodená cookie: ostanú predvolené tickery
@@ -1108,13 +1088,16 @@ if len(tickers) > MAX_TICKERS:
     tickers = tickers[:MAX_TICKERS]
 st.sidebar.caption(f"Aktuálny výber: **{len(tickers)} tickerov**")
 
-# Uloženie watchlistu do cookie len po dokončení obnovenia (inak by sa prepísal predvolenými hodnotami).
+# Uloženie watchlistu: zapisujeme len vtedy, keď sa zoznam oproti načítanému zmenil.
+# Základ (baseline) sa nastaví pri prvom behu, takže predvolený zoznam sa nikdy neprepíše.
 if st.session_state.get("watchlist_restored"):
     current_json = json.dumps(tickers)
-    if st.session_state.get("_last_saved_watchlist") != current_json:
+    if "_last_saved_watchlist" not in st.session_state:
+        st.session_state["_last_saved_watchlist"] = current_json
+    elif st.session_state["_last_saved_watchlist"] != current_json:
         cookie_manager.set(
             WATCHLIST_COOKIE,
-            current_json,
+            urllib.parse.quote(current_json),
             expires_at=datetime.now() + timedelta(days=365),
             key="save_watchlist",
         )
@@ -1991,13 +1974,7 @@ with tab_fundamentals:
     st.markdown(f"### {safe_name(profile_info, profile_ticker)} <span class='mono' style='color:{ACCENT}'>· {profile_ticker}</span>", unsafe_allow_html=True)
     summary_en = str(profile_info.get("longBusinessSummary", "") or "")
     if summary_en:
-        with st.spinner("Prekladám opis…"):
-            summary_sk, translate_error = translate_sk(summary_en)
-        st.markdown(f"<div class='desc-card'>{html.escape(summary_sk)}</div>", unsafe_allow_html=True)
-        if translate_error:
-            st.caption(f"⚠️ {translate_error} Zobrazuje sa pôvodný anglický text.")
-        with st.expander("Pôvodný anglický text"):
-            st.write(summary_en)
+        st.markdown(f"<div class='desc-card'>{html.escape(summary_en)}</div>", unsafe_allow_html=True)
     else:
         st.info("Opis spoločnosti nie je v dátovom zdroji dostupný.")
     d1, d2, d3, d4 = st.columns(4)
