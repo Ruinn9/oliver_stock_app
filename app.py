@@ -101,6 +101,9 @@ st.markdown(
       .news-meta {{ color: {MUTED}; font: 11px 'DM Mono', monospace; margin-top: 4px; }}
       .news-summary {{ color: #C5D4E9; font-size: 12.5px; line-height: 1.55; margin-top: 6px; }}
       .chart-note {{ color: {MUTED}; font-size: 12px; line-height: 1.5; margin: -4px 0 14px; }}
+      .desc-card {{ border: 1px solid {BORDER}; border-left: 4px solid {ACCENT}; border-radius: 14px; padding: 18px 22px;
+                    background: linear-gradient(145deg, {PANEL}, #0F1729); color: #DCE7F7;
+                    font-size: 15.5px; line-height: 1.8; margin: 8px 0 18px; box-shadow: 0 10px 28px rgba(0,0,0,.22); }}
       hr {{ border-color: {BORDER}; }}
       footer {{ visibility: hidden; }}
       @media (max-width: 720px) {{
@@ -110,7 +113,7 @@ st.markdown(
         .soft-value {{ font-size: 20px; }}
         .stTabs [data-baseweb="tab"] {{ padding: 8px 10px; font-size: 12px; }}
         .news-title {{ font-size: 13px; }}
-        .hero-sub {{ font-size: 12px; }}
+        .desc-card {{ font-size: 14px; padding: 14px 16px; }}
       }}
     </style>
     """,
@@ -247,6 +250,20 @@ def kpi_card(label: str, value: str, note: str, tone: str = "neutral") -> None:
         </div>""",
         unsafe_allow_html=True,
     )
+
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def translate_sk(text: str) -> str:
+    """Preloží text do slovenčiny (voľný Google Translate). Pri chybe vráti pôvodný text."""
+    if not text:
+        return text
+    try:
+        from deep_translator import GoogleTranslator
+        chunks = [text[i:i + 4500] for i in range(0, len(text), 4500)]
+        translated = [GoogleTranslator(source="auto", target="sk").translate(chunk) or chunk for chunk in chunks]
+        return " ".join(translated)
+    except Exception:
+        return text
 
 
 # Curated examples across the 11 main equity sectors, plus common broad-market ETFs.
@@ -490,8 +507,6 @@ def load_market_data(tickers: tuple[str, ...], period: str, refresh_key: str, ba
             highs[ticker] = high.rename(ticker)
         if low is not None:
             lows[ticker] = low.rename(ticker)
-        if item["high"] is not None and "Volume" in item:
-            pass  # objem sa v modeli nepoužíva
 
     def _stack(series_map: dict[str, pd.Series]) -> pd.DataFrame:
         return pd.concat(series_map.values(), axis=1).sort_index() if series_map else pd.DataFrame()
@@ -1945,6 +1960,9 @@ with tab_fundamentals:
         fig = px.bar(fund_data, x="Ticker", y=fundamental_metric, color=fundamental_metric,
                      color_continuous_scale=[ACCENT_2, "#64748B", GOLD], title=f"Porovnanie: {fundamental_metric}")
         fig.update_layout(coloraxis_showscale=False)
+        is_pct = "(%)" in fundamental_metric
+        fig.update_traces(hovertemplate="<b>%{x}</b><br>%{y:.2f}" + ("%" if is_pct else "") + "<extra></extra>")
+        fig.update_yaxes(tickformat=".2f", ticksuffix="%" if is_pct else "")
         st.plotly_chart(make_plotly_dark(fig, 390), use_container_width=True)
         chart_note("Porovnanie jedného ukazovateľa naprieč tickermi. Vždy zváž odvetvie a definíciu ukazovateľa, lebo bežné hodnoty sa líšia podľa typu podnikania.")
 
@@ -1964,7 +1982,15 @@ with tab_fundamentals:
     profile_info = infos.get(profile_ticker, {})
     profile_metrics = metrics.loc[metrics["Ticker"] == profile_ticker].iloc[0]
     st.markdown(f"### {safe_name(profile_info, profile_ticker)} <span class='mono' style='color:{ACCENT}'>· {profile_ticker}</span>", unsafe_allow_html=True)
-    st.markdown(f"<div class='small-muted'>{html.escape(str(profile_info.get('longBusinessSummary', 'Opis spoločnosti nie je v dátovom zdroji dostupný.')))}</div>", unsafe_allow_html=True)
+    summary_en = str(profile_info.get("longBusinessSummary", "") or "")
+    if summary_en:
+        with st.spinner("Prekladám opis…"):
+            summary_sk = translate_sk(summary_en)
+        st.markdown(f"<div class='desc-card'>{html.escape(summary_sk)}</div>", unsafe_allow_html=True)
+        with st.expander("Pôvodný anglický text"):
+            st.write(summary_en)
+    else:
+        st.info("Opis spoločnosti nie je v dátovom zdroji dostupný.")
     d1, d2, d3, d4 = st.columns(4)
     with d1:
         metric_card("Sektor", str(profile_info.get("sector") or "Neznámy"), str(profile_info.get("industry") or "Odvetvie neuvedené"))
