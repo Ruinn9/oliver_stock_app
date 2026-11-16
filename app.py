@@ -37,21 +37,39 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-BG = "#0A0F1D"
-PANEL = "#111A2E"
-PANEL_2 = "#16223A"
-BORDER = "#263552"
-TEXT = "#EAF0FA"
-MUTED = "#98A9C4"
-ACCENT = "#54E1C1"
-ACCENT_2 = "#8CA8FF"
-GOLD = "#FFC66D"
-RED = "#FF758F"
+THEMES = {
+    "Tmavá": {
+        "BG": "#0A0F1D", "PANEL": "#111A2E", "PANEL_2": "#16223A", "BORDER": "#263552",
+        "TEXT": "#EAF0FA", "MUTED": "#98A9C4", "ACCENT": "#54E1C1", "ACCENT_2": "#8CA8FF",
+        "GOLD": "#FFC66D", "RED": "#FF758F", "SIDEBAR_TOP": "#101a2d", "SIDEBAR_BOT": "#0b1222",
+    },
+    "Svetlá": {
+        "BG": "#F4F7FB", "PANEL": "#FFFFFF", "PANEL_2": "#EEF3FA", "BORDER": "#D5DEEC",
+        "TEXT": "#0F1A2E", "MUTED": "#55657E", "ACCENT": "#0E9F86", "ACCENT_2": "#3B5BDB",
+        "GOLD": "#B7791F", "RED": "#D6336C", "SIDEBAR_TOP": "#FFFFFF", "SIDEBAR_BOT": "#EEF3FA",
+    },
+}
+THEME_NAME = st.session_state.get("theme_choice", "Tmavá")
+P = THEMES.get(THEME_NAME, THEMES["Tmavá"])
+BG = P["BG"]
+PANEL = P["PANEL"]
+PANEL_2 = P["PANEL_2"]
+BORDER = P["BORDER"]
+TEXT = P["TEXT"]
+MUTED = P["MUTED"]
+ACCENT = P["ACCENT"]
+ACCENT_2 = P["ACCENT_2"]
+GOLD = P["GOLD"]
+RED = P["RED"]
 MAX_TICKERS = 35
 MAX_COMPARE = 4
 FETCH_TIMEOUT = 90
 BASE_CURRENCIES = ["EUR", "USD", "CZK"]
 CURRENCY_SYMBOL = {"EUR": "€", "USD": "$", "CZK": "Kč"}
+HORIZON_DAYS = {"1M": 21, "3M": 63, "6M": 126, "1Y": 252}
+MONTHS_SK = ["Január", "Február", "Marec", "Apríl", "Máj", "Jún",
+             "Júl", "August", "September", "Október", "November", "December"]
+NOTE_MAX_CHARS = 200
 
 st.markdown(
     f"""
@@ -59,52 +77,59 @@ st.markdown(
       @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
       :root {{ --bg:{BG}; --panel:{PANEL}; --panel2:{PANEL_2}; --border:{BORDER}; --text:{TEXT}; --muted:{MUTED}; --accent:{ACCENT}; }}
       html, body, [class*="css"] {{ font-family: 'Manrope', sans-serif; }}
-      .stApp {{ background: radial-gradient(circle at 12% 0%, #172643 0, {BG} 38%), radial-gradient(circle at 100% 100%, #0f2a2c 0, transparent 40%); color: {TEXT}; }}
-      [data-testid="stHeader"] {{ background: rgba(10,15,29,.85); }}
-      [data-testid="stSidebar"] {{ background: linear-gradient(180deg, #101a2d 0%, #0b1222 100%); border-right: 1px solid {BORDER}; }}
+      .stApp {{ background: radial-gradient(circle at 12% 0%, {PANEL_2} 0, {BG} 38%), radial-gradient(circle at 100% 100%, {PANEL} 0, transparent 45%); color: {TEXT}; }}
+      .stApp, .stApp p, .stApp li, .stApp label, .stApp h1, .stApp h2, .stApp h3, .stApp h4 {{ color: {TEXT}; }}
+      [data-testid="stHeader"] {{ background: {BG}; opacity: .92; }}
+      [data-testid="stSidebar"] {{ background: linear-gradient(180deg, {P["SIDEBAR_TOP"]} 0%, {P["SIDEBAR_BOT"]} 100%); border-right: 1px solid {BORDER}; }}
       [data-testid="stSidebar"] p, [data-testid="stSidebar"] label, [data-testid="stSidebar"] h1,
       [data-testid="stSidebar"] h4, [data-testid="stSidebar"] summary {{ color: {TEXT}; }}
-      [data-testid="stSidebar"] [data-testid="stExpander"] {{ border: 1px solid {BORDER}; border-radius: 12px; background: rgba(17,26,46,.6); }}
+      [data-testid="stSidebar"] [data-testid="stExpander"] {{ border: 1px solid {BORDER}; border-radius: 12px; background: {PANEL}; }}
+      [data-baseweb="select"] > div, .stTextInput input, .stTextArea textarea, .stNumberInput input {{
+          background: {PANEL_2} !important; color: {TEXT} !important; border-color: {BORDER} !important; }}
       h1, h2, h3 {{ letter-spacing: -0.03em; }}
       h1 {{ font-weight: 800 !important; }}
       .block-container {{ padding-top: 1.6rem; max-width: 1400px; }}
       .topbar {{ display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px 18px;
                  padding: 16px 22px; border:1px solid {BORDER}; border-radius:18px; margin: 2px 0 16px;
-                 background: linear-gradient(115deg, rgba(26,45,73,.98), rgba(16,26,46,.96) 58%, rgba(18,47,57,.9)); }}
+                 background: linear-gradient(115deg, {PANEL}, {PANEL_2} 70%); }}
       .brand {{ font-size: 22px; font-weight: 800; color: {TEXT}; letter-spacing: -.02em; }}
       .brand span {{ color: {ACCENT}; }}
       .eyebrow {{ font: 500 11px 'DM Mono', monospace; letter-spacing: .18em; color: {ACCENT}; text-transform: uppercase; }}
       .snapshot {{ color: {MUTED}; font: 11px 'DM Mono', monospace; }}
-      .chip {{ display:inline-block; border: 1px solid #2f4a6e; background: #132037; border-radius: 8px; padding: 3px 9px; margin: 2px 4px 2px 0; color: {ACCENT}; font: 12px 'DM Mono', monospace; }}
+      .chip {{ display:inline-block; border: 1px solid {BORDER}; background: {PANEL_2}; border-radius: 8px; padding: 3px 9px; margin: 2px 4px 2px 0; color: {ACCENT}; font: 12px 'DM Mono', monospace; }}
       .section-kicker {{ color: {ACCENT}; font: 500 11px 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .14em; margin: 0 0 6px; }}
-      .soft-card {{ border: 1px solid {BORDER}; background: linear-gradient(145deg, {PANEL}, #0f1729); border-radius: 15px; padding: 16px 17px; height: 100%; box-shadow: 0 8px 24px rgba(0,0,0,.18); }}
+      .soft-card {{ border: 1px solid {BORDER}; background: linear-gradient(145deg, {PANEL}, {PANEL_2}); border-radius: 15px; padding: 16px 17px; height: 100%; box-shadow: 0 8px 24px rgba(0,0,0,.12); }}
       .soft-label {{ color: {MUTED}; font: 11px 'DM Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }}
       .soft-value {{ color: {TEXT}; font-size: 25px; font-weight: 800; margin: 8px 0 6px; letter-spacing: -.04em; }}
       .soft-note {{ color: {MUTED}; font-size: 12px; line-height: 1.5; }}
       .kpi-pill {{ display: inline-block; border: 1px solid; border-radius: 99px; padding: 3px 10px; font-size: 12px; font-weight: 600; margin-top: 4px; }}
-      .info-box {{ border-left: 3px solid {ACCENT}; background: rgba(84,225,193,.07); border-radius: 0 10px 10px 0; padding: 11px 14px; color: #D5E4F4; line-height: 1.6; font-size: 13px; }}
-      .warning-box {{ border-left: 3px solid {GOLD}; background: rgba(255,198,109,.07); border-radius: 0 10px 10px 0; padding: 11px 14px; color: #F0E2C7; line-height: 1.6; font-size: 13px; }}
+      .info-box {{ border-left: 3px solid {ACCENT}; background: {ACCENT}14; border-radius: 0 10px 10px 0; padding: 11px 14px; color: {TEXT}; line-height: 1.6; font-size: 13px; margin: 6px 0 12px; }}
+      .warning-box {{ border-left: 3px solid {GOLD}; background: {GOLD}1F; border-radius: 0 10px 10px 0; padding: 11px 14px; color: {TEXT}; line-height: 1.6; font-size: 13px; margin: 6px 0 12px; }}
+      .feature-hero {{ border:1px solid {BORDER}; border-radius:18px; padding:18px 22px; margin: 4px 0 16px;
+                       background: linear-gradient(120deg, {PANEL}, {PANEL_2}); box-shadow: 0 10px 28px rgba(0,0,0,.10); }}
+      .feature-hero h4 {{ margin: 4px 0 6px; color: {TEXT}; font-weight: 800; }}
+      .feature-hero p {{ color: {MUTED}; font-size: 13px; line-height: 1.6; margin: 0; }}
       .small-muted {{ color: {MUTED}; font-size: 12px; line-height: 1.55; }}
       .mono {{ font-family: 'DM Mono', monospace; }}
-      .swot-head {{ border:1px solid {BORDER};border-radius:15px;padding:14px 18px;background:linear-gradient(145deg,{PANEL},#0F1729);margin-bottom:12px; }}
+      .swot-head {{ border:1px solid {BORDER};border-radius:15px;padding:14px 18px;background:linear-gradient(145deg,{PANEL},{PANEL_2});margin-bottom:12px; }}
       .stTabs [data-baseweb="tab-list"] {{ gap: 7px; border-bottom: 1px solid {BORDER}; flex-wrap: wrap; }}
-      .stTabs [data-baseweb="tab"] {{ background: rgba(17,26,46,.65); border: 1px solid transparent; border-radius: 10px 10px 0 0; padding: 10px 15px; color: {MUTED}; }}
-      .stTabs [aria-selected="true"] {{ background: #172640 !important; border-color: {BORDER} !important; color: {ACCENT} !important; }}
-      div[data-testid="stMetric"] {{ border: 1px solid {BORDER}; padding: 14px 15px; border-radius: 14px; background: linear-gradient(145deg, {PANEL}, #0F1729); }}
+      .stTabs [data-baseweb="tab"] {{ background: {PANEL}; border: 1px solid transparent; border-radius: 10px 10px 0 0; padding: 10px 15px; color: {MUTED}; }}
+      .stTabs [aria-selected="true"] {{ background: {PANEL_2} !important; border-color: {BORDER} !important; color: {ACCENT} !important; }}
+      div[data-testid="stMetric"] {{ border: 1px solid {BORDER}; padding: 14px 15px; border-radius: 14px; background: linear-gradient(145deg, {PANEL}, {PANEL_2}); }}
       div[data-testid="stMetricLabel"] p {{ color: {MUTED} !important; font-size: 11px !important; text-transform: uppercase; letter-spacing: .06em; }}
       div[data-testid="stMetricValue"] {{ color: {TEXT}; font-weight: 800; }}
-      .stButton > button, .stDownloadButton > button, .stLinkButton > a {{ border-radius: 10px; border: 1px solid #3C5977; background: #172640; color: {TEXT}; font-weight: 700; }}
+      .stButton > button, .stDownloadButton > button, .stLinkButton > a {{ border-radius: 10px; border: 1px solid {BORDER}; background: {PANEL_2}; color: {TEXT}; font-weight: 700; }}
       .stButton > button:hover, .stDownloadButton > button:hover, .stLinkButton > a:hover {{ border-color: {ACCENT}; color: {ACCENT}; }}
       div[data-testid="stDataFrame"] {{ border: 1px solid {BORDER}; border-radius: 12px; overflow: hidden; }}
       .news-card {{ border: 1px solid {BORDER}; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;
-                    background: linear-gradient(145deg, {PANEL}, #0F1729); }}
+                    background: linear-gradient(145deg, {PANEL}, {PANEL_2}); }}
       .news-title {{ color: {TEXT}; font-weight: 700; font-size: 14px; line-height: 1.4; }}
       .news-meta {{ color: {MUTED}; font: 11px 'DM Mono', monospace; margin-top: 4px; }}
-      .news-summary {{ color: #C5D4E9; font-size: 12.5px; line-height: 1.55; margin-top: 6px; }}
+      .news-summary {{ color: {MUTED}; font-size: 12.5px; line-height: 1.55; margin-top: 6px; }}
       .chart-note {{ color: {MUTED}; font-size: 12px; line-height: 1.5; margin: -4px 0 14px; }}
       .desc-card {{ border: 1px solid {BORDER}; border-left: 4px solid {ACCENT}; border-radius: 14px; padding: 18px 22px;
-                    background: linear-gradient(145deg, {PANEL}, #0F1729); color: #DCE7F7;
-                    font-size: 15.5px; line-height: 1.8; margin: 8px 0 18px; box-shadow: 0 10px 28px rgba(0,0,0,.22); }}
+                    background: linear-gradient(145deg, {PANEL}, {PANEL_2}); color: {TEXT};
+                    font-size: 15px; line-height: 1.8; margin: 8px 0 18px; box-shadow: 0 10px 28px rgba(0,0,0,.10); }}
       hr {{ border-color: {BORDER}; }}
       footer {{ visibility: hidden; }}
       @media (max-width: 720px) {{
@@ -179,6 +204,17 @@ def pretty_large(value: Any) -> str:
     return f"{value:,.0f}"
 
 
+def fmt_cell(value: Any) -> str:
+    """Formátovanie jednej bunky pre export: čísla s dvoma desatinnými miestami, chýbajúce ako pomlčka."""
+    if isinstance(value, (bool, np.bool_)):
+        return str(value)
+    if isinstance(value, (int, float, np.integer, np.floating)):
+        return f"{value:,.2f}" if np.isfinite(value) else "—"
+    if value is None:
+        return "—"
+    return str(value)
+
+
 def safe_name(info: dict[str, Any], ticker: str) -> str:
     return str(info.get("shortName") or info.get("longName") or ticker)
 
@@ -194,6 +230,18 @@ def tone_for_sign(value: Any) -> str:
 def chart_note(text: str) -> None:
     """Krátke vysvetlenie pod grafom: čo ukazuje a na čo si dať pozor."""
     st.markdown(f"<div class='chart-note'>ℹ️ {html.escape(text)}</div>", unsafe_allow_html=True)
+
+
+def info_box(text: str, kind: str = "info") -> None:
+    cls = "info-box" if kind == "info" else "warning-box"
+    st.markdown(f"<div class='{cls}'>{text}</div>", unsafe_allow_html=True)
+
+
+def feature_hero(title: str, text: str) -> None:
+    st.markdown(
+        f"<div class='feature-hero'><h4>{html.escape(title)}</h4><p>{text}</p></div>",
+        unsafe_allow_html=True,
+    )
 
 
 KEY_FUNDAMENTALS = ["P/E (TTM)", "Zisková marža (%)", "ROE (%)", "Rast tržieb (%)", "Debt/Equity"]
@@ -226,7 +274,7 @@ def make_plotly_dark(fig: go.Figure, height: int = 430) -> go.Figure:
         hoverlabel=dict(bgcolor=PANEL_2, font_color=TEXT),
     )
     fig.update_xaxes(showgrid=False, zeroline=False, linecolor=BORDER, tickfont=dict(color=MUTED))
-    fig.update_yaxes(gridcolor="rgba(130,155,190,.13)", zeroline=False, linecolor=BORDER, tickfont=dict(color=MUTED))
+    fig.update_yaxes(gridcolor="rgba(130,155,190,.18)", zeroline=False, linecolor=BORDER, tickfont=dict(color=MUTED))
     return fig
 
 
@@ -250,6 +298,77 @@ def kpi_card(label: str, value: str, note: str, tone: str = "neutral") -> None:
           <span class='kpi-pill' style='color:{color};border-color:{color}88;background:{color}1A'>{arrows[tone]} {note}</span>
         </div>""",
         unsafe_allow_html=True,
+    )
+
+
+def project_simplex(v: np.ndarray) -> np.ndarray:
+    """Premietne vektor na simplex (kladné čísla s súčtom 1)."""
+    n = len(v)
+    u = np.sort(v)[::-1]
+    cssv = np.cumsum(u)
+    rho = np.nonzero(u * np.arange(1, n + 1) > (cssv - 1))[0][-1]
+    theta = (cssv[rho] - 1) / (rho + 1)
+    return np.maximum(v - theta, 0.0)
+
+
+def min_var_weights(cov: np.ndarray, iters: int = 3000) -> np.ndarray:
+    """Portfólio s najnižšou varianciou, len kladné váhy (projektovaný gradient, bez scipy)."""
+    n = cov.shape[0]
+    w = np.full(n, 1.0 / n)
+    lam_max = float(np.max(np.linalg.eigvalsh(cov)))
+    if lam_max <= 0:
+        return w
+    lr = 1.0 / (2.0 * lam_max)
+    for _ in range(iters):
+        grad = 2.0 * cov @ w
+        w_new = project_simplex(w - lr * grad)
+        if np.abs(w_new - w).max() < 1e-10:
+            w = w_new
+            break
+        w = w_new
+    return w
+
+
+def build_report_html(metrics_df: pd.DataFrame, notes_map: dict[str, str], base_ccy: str,
+                      stamp: str, bench: str) -> str:
+    cols = ["Ticker", "Spoločnosť", "Sektor", "Cena", "Mena", "1Y (%)", "3M (%)",
+            "Volatilita (%)", "Max. prepad (%)", "Technické skóre", "P/E (TTM)",
+            "Zisková marža (%)", "ROE (%)"]
+    table_df = metrics_df[cols].copy()
+    for c in table_df.columns:
+        table_df[c] = table_df[c].map(fmt_cell)
+    head = "".join(f"<th>{html.escape(c)}</th>" for c in cols)
+    body = ""
+    for _, row in table_df.iterrows():
+        body += "<tr>" + "".join(f"<td>{html.escape(str(v))}</td>" for v in row.values) + "</tr>"
+    notes_html = ""
+    for t in metrics_df["Ticker"]:
+        note = notes_map.get(t)
+        if note:
+            notes_html += f"<li><b>{html.escape(t)}</b>: {html.escape(note)}</li>"
+    if not notes_html:
+        notes_html = "<li>Žiadne poznámky.</li>"
+    style = (
+        "body{font-family:Arial,Helvetica,sans-serif;color:#0F1A2E;margin:32px;}"
+        "h1{margin:0 0 4px;font-size:24px;} .meta{color:#55657E;font-size:12px;margin-bottom:18px;}"
+        "table{border-collapse:collapse;width:100%;font-size:11px;}"
+        "th,td{border:1px solid #D5DEEC;padding:6px 8px;text-align:left;}"
+        "th{background:#EEF3FA;} h2{font-size:16px;margin-top:26px;}"
+        ".disc{color:#55657E;font-size:11px;margin-top:24px;border-top:1px solid #D5DEEC;padding-top:10px;}"
+    )
+    return (
+        "<!doctype html><html lang='sk'><head><meta charset='utf-8'>"
+        "<title>OLIVER LESO · Report</title><style>" + style + "</style></head><body>"
+        "<h1>OLIVER LESO · Equity Research Studio</h1>"
+        f"<div class='meta'>Vygenerované: {html.escape(stamp)} · Mena: {html.escape(base_ccy)} · "
+        f"Benchmark: {html.escape(bench)}</div>"
+        "<h2>Prehľad watchlistu</h2>"
+        f"<table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>"
+        "<h2>Moje poznámky</h2>"
+        f"<ul>{notes_html}</ul>"
+        "<div class='disc'>Vzdelávací nástroj. Historické dáta z Yahoo Finance, nie sú investičným odporúčaním "
+        "ani zárukou budúcich výsledkov. Ak chceš PDF, otvor tento súbor v prehliadači a použi Ctrl+P → Uložiť ako PDF.</div>"
+        "</body></html>"
     )
 
 
@@ -893,7 +1012,7 @@ def explain_score() -> None:
     )
 
 # -----------------------------------------------------------------------------
-# Session state and callbacks
+# Session state, cookies and callbacks
 # -----------------------------------------------------------------------------
 DEFAULT_TICKERS = ["AAPL", "MSFT", "NVDA", "GOOGL", "META", "AMD", "TSM", "AVGO", "ORCL", "UBER", "PLTR", "JPM", "V", "COST"]
 TICKER_UNIVERSE = list(dict.fromkeys(
@@ -908,8 +1027,9 @@ TICKER_PRESETS = {
     "Dividendové a defenzívne": ["KO", "PEP", "WMT", "COST", "XOM", "CVX", "V", "JPM", "VOO", "VT"],
 }
 
-# --- Watchlist persistence (per browser, via cookie) -------------------------
+# --- Cookies (per browser): watchlist + poznámky ----------------------------
 WATCHLIST_COOKIE = "oliver_watchlist"
+NOTES_COOKIE = "oliver_notes"
 cookie_manager = stx.CookieManager(key="watchlist_cookies")
 
 if "watchlist_restored" not in st.session_state:
@@ -925,6 +1045,20 @@ if "watchlist_restored" not in st.session_state:
             st.session_state["ticker_selection"] = restored[:MAX_TICKERS]
         except (ValueError, TypeError):
             pass  # poškodená cookie: ostanú predvolené tickery
+
+    notes_restored: dict[str, str] = {}
+    notes_raw = cookie_manager.get(NOTES_COOKIE)
+    if notes_raw:
+        try:
+            loaded = json.loads(urllib.parse.unquote(notes_raw))
+            if isinstance(loaded, dict):
+                notes_restored = {str(k): str(v)[:NOTE_MAX_CHARS] for k, v in loaded.items() if str(v).strip()}
+        except (ValueError, TypeError):
+            pass
+    st.session_state["notes_store"] = notes_restored
+    st.session_state["_last_saved_notes"] = json.dumps(
+        {k: notes_restored[k] for k in sorted(notes_restored)}, ensure_ascii=False
+    )
     st.session_state["watchlist_restored"] = True
 
 if "_market_data_refresh_key" not in st.session_state:
@@ -937,6 +1071,7 @@ if "compare_list" not in st.session_state:
     st.session_state["compare_list"] = ["AAPL", "MSFT"]
 if "snapshot_log" not in st.session_state:
     st.session_state["snapshot_log"] = []
+st.session_state.setdefault("notes_store", {})
 
 
 def add_custom_tickers() -> None:
@@ -1005,6 +1140,10 @@ def add_compare_symbol() -> None:
 # -----------------------------------------------------------------------------
 st.sidebar.markdown("<div class='eyebrow'>Equity Research Studio</div>", unsafe_allow_html=True)
 st.sidebar.title("Nastavenie analýzy")
+
+with st.sidebar.expander("🎨 Vzhľad", expanded=False):
+    st.radio("Téma", ["Tmavá", "Svetlá"], key="theme_choice", horizontal=True,
+             help="Prepne farby celej aplikácie. Výber sa zapamätá len v aktuálnej relácii.")
 
 with st.sidebar.expander("➕ Pridať ticker", expanded=False):
     st.caption(
@@ -1112,12 +1251,12 @@ with st.sidebar.expander("⚙️ Nastavenia modelu", expanded=False):
     )
     base_sym = CURRENCY_SYMBOL.get(base, base)
     period = st.selectbox("Historické obdobie", ["1y", "2y", "5y", "10y", "max"], index=1,
-                          help="Dlhšie obdobie pomáha pri SMA 200, drawdowne a porovnávaní cyklov.")
+                          help="Dlhšie obdobie pomáha pri SMA 200, drawdowne a porovnávaní cyklov. Sezónnosť potrebuje aspoň 5 rokov.")
     benchmark = st.selectbox(
         "Porovnávací benchmark",
         ["SPY", "QQQ", "^GSPC", "^IXIC", "^STOXX50E", "^FTSE", "VWCE.DE"],
         index=0,
-        help="Beta porovnáva citlivosť akcie na zvolený benchmark.",
+        help="Beta a výkonnosť voči benchmarku sa počítajú oproti tomuto indexu.",
     )
     capital = st.number_input(f"Modelový kapitál ({base_sym})", min_value=100.0, max_value=100_000_000.0, value=10_000.0, step=500.0)
     allocation_method = st.radio(
@@ -1162,7 +1301,7 @@ if not valid_tickers:
                 st.write(f"- {issue}")
     st.stop()
 
-for dependent_key in ("chart_ticker", "profile_ticker", "swot_ticker"):
+for dependent_key in ("chart_ticker", "profile_ticker", "swot_ticker", "season_ticker"):
     if st.session_state.get(dependent_key) not in valid_tickers:
         st.session_state.pop(dependent_key, None)
 mc_selected_state = st.session_state.get("mc_compare_tickers")
@@ -1173,7 +1312,7 @@ benchmark_returns = None
 if benchmark in prices_all.columns:
     benchmark_returns = prices_all[benchmark].pct_change(fill_method=None).dropna()
 else:
-    st.warning(f"Benchmark {benchmark} sa nepodarilo načítať. Beta nebude k dispozícii.")
+    st.warning(f"Benchmark {benchmark} sa nepodarilo načítať. Beta ani porovnanie s indexom nebude k dispozícii.")
 
 metrics = build_stock_metrics(valid_tickers, prices_all, highs_all, lows_all, volumes_all, infos, benchmark_returns)
 if metrics.empty:
@@ -1220,6 +1359,35 @@ for news_ticker in valid_tickers:
 
 price_df = prices_all.reindex(columns=valid_tickers)
 returns = price_df.pct_change(fill_method=None).dropna(how="all")
+
+# Výpočty portfólia (používa ich portfólio, kvantitatívne nástroje a Monte Carlo)
+asset_vol = metrics.set_index("Ticker")["Volatilita (%)"].reindex(valid_tickers) / 100.0
+if allocation_method == "Rovnaká váha":
+    weight_series = pd.Series(1 / len(valid_tickers), index=valid_tickers, dtype=float)
+else:
+    inv_vol = 1 / asset_vol.replace(0, np.nan)
+    inv_vol = inv_vol.replace([np.inf, -np.inf], np.nan).fillna(0)
+    if inv_vol.sum() <= 0:
+        weight_series = pd.Series(1 / len(valid_tickers), index=valid_tickers, dtype=float)
+    else:
+        weight_series = inv_vol / inv_vol.sum()
+
+portfolio_returns_df = returns.reindex(columns=valid_tickers).fillna(0)
+portfolio_returns = portfolio_returns_df.dot(weight_series).dropna()
+growth = (1 + portfolio_returns).cumprod()
+daily_vol = as_float(portfolio_returns.std(ddof=1)) if len(portfolio_returns) > 1 else np.nan
+annual_vol = daily_vol * np.sqrt(252) if np.isfinite(daily_vol) else np.nan
+annual_mean = as_float(portfolio_returns.mean() * 252) if len(portfolio_returns) else np.nan
+annualized_return = (float(growth.iloc[-1]) ** (252 / len(portfolio_returns)) - 1) if len(portfolio_returns) > 1 and growth.iloc[-1] > 0 else np.nan
+sharpe = (annual_mean - risk_free / 100) / annual_vol if np.isfinite(annual_vol) and annual_vol > 0 else np.nan
+max_drawdown_port = as_float((growth / growth.cummax() - 1).min() * 100) if not growth.empty else np.nan
+daily_q05 = as_float(portfolio_returns.quantile(0.05)) if len(portfolio_returns) else np.nan
+worst_days = portfolio_returns[portfolio_returns <= daily_q05] if np.isfinite(daily_q05) else pd.Series(dtype=float)
+cvar_daily = as_float(worst_days.mean()) if len(worst_days) else np.nan
+var_eur = max(0.0, -daily_q05 * capital) if np.isfinite(daily_q05) else np.nan
+cvar_eur = max(0.0, -cvar_daily * capital) if np.isfinite(cvar_daily) else np.nan
+hhi = float(np.sum((weight_series * 100) ** 2))
+effective_positions = 1 / float(np.sum(weight_series ** 2)) if float(np.sum(weight_series ** 2)) > 0 else np.nan
 
 if data_errors:
     with st.expander(f"Poznámky pri načítaní dát ({len(data_errors)})"):
@@ -1345,9 +1513,11 @@ with st.expander(f"📰 Správy z watchlistu ({news_count})", expanded=False):
 # -----------------------------------------------------------------------------
 # 3. Detailné záložky
 # -----------------------------------------------------------------------------
-tab_charts, tab_screener, tab_compare, tab_portfolio, tab_mc, tab_fundamentals, tab_swot, tab_glossary = st.tabs(
-    ["↗ Grafy & technika", "⌕ Screener", "🆚 Porovnanie", "⛨ Portfólio & riziko", "🎲 Monte Carlo",
-     "▤ Fundamenty", "◩ SWOT", "ⓘ Slovník"]
+tab_charts, tab_screener, tab_compare, tab_bench, tab_portfolio, tab_quant, tab_mc, tab_season, \
+    tab_fundamentals, tab_swot, tab_notes, tab_export, tab_glossary = st.tabs(
+    ["↗ Grafy & technika", "⌕ Screener", "🆚 Porovnanie", "🏁 Benchmark", "⛨ Portfólio & riziko",
+     "🧮 Kvantitatívne", "🎲 Monte Carlo", "📅 Sezónnosť", "▤ Fundamenty", "◩ SWOT",
+     "📝 Poznámky", "📤 Export", "ⓘ Slovník"]
 )
 
 # -----------------------------------------------------------------------------
@@ -1456,7 +1626,7 @@ with tab_charts:
             q3.metric("Riziko pri stop-loss", f"{estimated_loss:,.2f} {base}", f"Limit: {risk_budget_amount:,.2f} {base}")
             q4.metric("Potenciálny zisk pri cieli", f"{estimated_gain:,.2f} {base}", "Hypotetický, pred nákladmi")
             q5.metric("Výnos : riziko", f"1 : {rr_ratio:.2f}", "Na jednu akciu")
-            st.markdown("<div class='info-box'><b>Ako čítať kalkulačku:</b> Najprv určíš, koľko kapitálu si ochotný/á riskovať, potom vzdialenosť medzi vstupom a stop-lossom. Počet kusov sa vypočíta z tohto limitu a nikdy neprekročí zadaný kapitál. Stop-loss negarantuje vykonanie presne na zadanej cene, najmä pri cenových medzerách a nízkej likvidite.</div>", unsafe_allow_html=True)
+            info_box("<b>Ako čítať kalkulačku:</b> Najprv určíš, koľko kapitálu si ochotný/á riskovať, potom vzdialenosť medzi vstupom a stop-lossom. Počet kusov sa vypočíta z tohto limitu a nikdy neprekročí zadaný kapitál. Stop-loss negarantuje vykonanie presne na zadanej cene, najmä pri cenových medzerách a nízkej likvidite.")
 
     with st.expander("Porovnanie rastu cien na rovnakej báze"):
         compare_tickers = st.multiselect("Tickery na porovnanie", valid_tickers,
@@ -1640,7 +1810,7 @@ with tab_compare:
             st.plotly_chart(make_plotly_dark(fig, 460), use_container_width=True)
             chart_note("Všetky firmy začínajú na 100, takže vidíš, kto ako rástol alebo klesal od rovnakého štartu. Neberie do úvahy dividendy ani poplatky.")
 
-            st.markdown("<div class='info-box'><b>Ako čítať porovnanie:</b> Každé číslo má iný význam. Vyššia historická výnosnosť bola často spojená s vyšším kolísaním. Vysoké P/E môže znamenať vysoké očakávania trhu. Marža a ROE sa dajú porovnávať hlavne v rámci rovnakého odvetvia. Porovnanie nevyhlasuje víťaza a nepredpovedá budúce výnosy.</div>", unsafe_allow_html=True)
+            info_box("<b>Ako čítať porovnanie:</b> Každé číslo má iný význam. Vyššia historická výnosnosť bola často spojená s vyšším kolísaním. Vysoké P/E môže znamenať vysoké očakávania trhu. Marža a ROE sa dajú porovnávať hlavne v rámci rovnakého odvetvia. Porovnanie nevyhlasuje víťaza a nepredpovedá budúce výnosy.")
 
             with st.expander("Čo jednotlivé ukazovatele znamenajú"):
                 st.markdown("""
@@ -1670,38 +1840,71 @@ with tab_compare:
                         st.write(f"- {issue}")
 
 # -----------------------------------------------------------------------------
+# TAB: Benchmark (výkonnosť voči indexu)
+# -----------------------------------------------------------------------------
+with tab_bench:
+    st.markdown("<div class='section-kicker'>Benchmark</div>", unsafe_allow_html=True)
+    st.subheader("Výkonnosť voči benchmarku")
+    feature_hero(
+        "Porazil titul zvolený index?",
+        "Pre každý titul z watchlistu porovnáva jeho výnos za zvolené obdobie s výnosom benchmarku. "
+        "Kladný rozdiel znamená, že titul zvolený index porazil, záporný znamená, že zaostal. "
+        "Ide o štatistiku minulosti, nie o odporúčanie."
+    )
+    if benchmark not in prices_all.columns:
+        st.warning(f"Benchmark {benchmark} sa nepodarilo načítať, preto porovnanie nie je k dispozícii.")
+    else:
+        horizon = st.selectbox("Obdobie", list(HORIZON_DAYS.keys()), index=2, key="bench_horizon")
+        days = HORIZON_DAYS[horizon]
+        bench_ret = pct_change_over(prices_all[benchmark], days)
+        rows = []
+        for t in valid_tickers:
+            r = pct_change_over(price_df[t], days)
+            rows.append({
+                "Ticker": t,
+                "Výnos (%)": r,
+                f"Benchmark {benchmark} (%)": bench_ret,
+                "Rozdiel (p. b.)": r - bench_ret if np.isfinite(r) and np.isfinite(bench_ret) else np.nan,
+                "Porazil index": ("áno" if r > bench_ret else "nie") if np.isfinite(r) and np.isfinite(bench_ret) else "—",
+            })
+        bench_df = pd.DataFrame(rows).dropna(subset=["Rozdiel (p. b.)"]).sort_values("Rozdiel (p. b.)", ascending=False)
+        if bench_df.empty:
+            st.info("Pre zvolené obdobie nie sú dostatočné dáta. Skús kratšie obdobie alebo dlhšie historické obdobie v nastaveniach.")
+        else:
+            b1, b2, b3 = st.columns(3)
+            with b1:
+                kpi_card("Benchmark", fmt_pct_signed(bench_ret), f"{benchmark} za {horizon}", tone_for_sign(bench_ret))
+            with b2:
+                beaten = int((bench_df["Porazil index"] == "áno").sum())
+                kpi_card("Porazili index", f"{beaten} z {len(bench_df)}", "Počet titulov nad benchmarkom", "neutral")
+            with b3:
+                best_row = bench_df.iloc[0]
+                kpi_card("Najväčší náskok", f"{best_row['Ticker']} {best_row['Rozdiel (p. b.)']:+.2f} p. b.",
+                         "Rozdiel voči benchmarku", tone_for_sign(best_row["Rozdiel (p. b.)"]))
+
+            fig = px.bar(bench_df, x="Ticker", y="Rozdiel (p. b.)", color="Rozdiel (p. b.)",
+                         color_continuous_scale=[RED, "#64748B", ACCENT],
+                         title=f"Rozdiel voči {benchmark} · {horizon}")
+            fig.update_layout(coloraxis_showscale=False, yaxis_title="Percentuálne body")
+            st.plotly_chart(make_plotly_dark(fig, 420), use_container_width=True)
+            chart_note("Stĺpec nad nulou znamená, že titul porazil benchmark. Percentuálne body sú rozdiel dvoch výnosov, nie relatívna zmena.")
+
+            st.dataframe(
+                bench_df.style.format({
+                    "Výnos (%)": "{:+.2f}%",
+                    f"Benchmark {benchmark} (%)": "{:+.2f}%",
+                    "Rozdiel (p. b.)": "{:+.2f}",
+                }, na_rep="—"),
+                use_container_width=True, hide_index=True,
+            )
+            info_box("<b>Na čo si dať pozor:</b> Jedno obdobie môže byť nereprezentatívne. Titul, ktorý porazil index za posledný mesiac, nemusí porážať index dlhodobo. Porovnávaj aj dlhšie obdobia a riziko (volatilitu, prepad).")
+
+# -----------------------------------------------------------------------------
 # TAB: portfolio construction and risk
 # -----------------------------------------------------------------------------
 with tab_portfolio:
     st.markdown("<div class='section-kicker'>Portfolio laboratory</div>", unsafe_allow_html=True)
     st.subheader("Model rozdelenia kapitálu a rizikový profil")
-    asset_vol = metrics.set_index("Ticker")["Volatilita (%)"].reindex(valid_tickers) / 100.0
-    if allocation_method == "Rovnaká váha":
-        weight_series = pd.Series(1 / len(valid_tickers), index=valid_tickers, dtype=float)
-    else:
-        inv_vol = 1 / asset_vol.replace(0, np.nan)
-        inv_vol = inv_vol.replace([np.inf, -np.inf], np.nan).fillna(0)
-        if inv_vol.sum() <= 0:
-            weight_series = pd.Series(1 / len(valid_tickers), index=valid_tickers, dtype=float)
-        else:
-            weight_series = inv_vol / inv_vol.sum()
-
-    portfolio_returns_df = returns.reindex(columns=valid_tickers).fillna(0)
-    portfolio_returns = portfolio_returns_df.dot(weight_series).dropna()
-    growth = (1 + portfolio_returns).cumprod()
-    daily_vol = as_float(portfolio_returns.std(ddof=1)) if len(portfolio_returns) > 1 else np.nan
-    annual_vol = daily_vol * np.sqrt(252) if np.isfinite(daily_vol) else np.nan
-    annual_mean = as_float(portfolio_returns.mean() * 252) if len(portfolio_returns) else np.nan
-    annualized_return = (float(growth.iloc[-1]) ** (252 / len(portfolio_returns)) - 1) if len(portfolio_returns) > 1 and growth.iloc[-1] > 0 else np.nan
-    sharpe = (annual_mean - risk_free / 100) / annual_vol if np.isfinite(annual_vol) and annual_vol > 0 else np.nan
-    max_drawdown_port = as_float((growth / growth.cummax() - 1).min() * 100) if not growth.empty else np.nan
-    daily_q05 = as_float(portfolio_returns.quantile(0.05)) if len(portfolio_returns) else np.nan
-    worst_days = portfolio_returns[portfolio_returns <= daily_q05] if np.isfinite(daily_q05) else pd.Series(dtype=float)
-    cvar_daily = as_float(worst_days.mean()) if len(worst_days) else np.nan
-    var_eur = max(0.0, -daily_q05 * capital) if np.isfinite(daily_q05) else np.nan
-    cvar_eur = max(0.0, -cvar_daily * capital) if np.isfinite(cvar_daily) else np.nan
-    hhi = float(np.sum((weight_series * 100) ** 2))
-    effective_positions = 1 / float(np.sum(weight_series ** 2)) if float(np.sum(weight_series ** 2)) > 0 else np.nan
 
     p1, p2, p3, p4 = st.columns(4)
     with p1:
@@ -1753,7 +1956,7 @@ with tab_portfolio:
             cumulative = (growth - 1) * 100
             fig = go.Figure()
             fig.add_trace(go.Scatter(x=cumulative.index, y=cumulative.values, mode="lines", name="Portfólio",
-                                     line=dict(color=ACCENT, width=2.5), fill="tozeroy", fillcolor="rgba(84,225,193,.08)"))
+                                     line=dict(color=ACCENT, width=2.5), fill="tozeroy", fillcolor="rgba(84,225,193,.12)"))
             fig.update_layout(title="Kumulatívny modelový výnos", xaxis_title="Dátum", yaxis_title="Výnos (%)")
             st.plotly_chart(make_plotly_dark(fig, 390), use_container_width=True)
             chart_note("Kumulatívny výnos modelu za zvolené obdobie. Najväčší prepad od vrcholu je v kartách vyššie, pretože ukazuje, aký hlboký pokles model zažil.")
@@ -1765,8 +1968,138 @@ with tab_portfolio:
             st.plotly_chart(make_plotly_dark(fig_corr, max(330, len(valid_tickers) * 28)), use_container_width=True)
             chart_note("Blízko +1 sa tituly v minulosti pohybovali spolu, takže sa navzájom slabo diverzifikujú. Nízke alebo záporné hodnoty znamenajú lepšiu diverzifikáciu. Korelácie sa v krízach často zvyšujú.")
 
-    st.markdown("<div class='info-box'><b>Ako čítať portfóliové riziko:</b> Ročná volatilita odhaduje veľkosť bežných výkyvov, max drawdown ukazuje najväčší pozorovaný prepad od vrcholu, VaR približuje hranicu zlého dňa a CVaR priemernú stratu v najhorších 5 % dní. Každá metrika opisuje iný aspekt rizika, preto ich čítaj spolu.</div>", unsafe_allow_html=True)
-    st.markdown("<div class='warning-box'><b>Limit modelu:</b> Inverzná volatilita nie je plná risk parity. Neoptimalizuje korelácie a nezaručuje rovnaký príspevok každého aktíva k riziku. Historické metriky nepredpovedajú budúce straty a výsledok nemusí zahŕňať dividendy, poplatky, dane ani menové konverzie.</div>", unsafe_allow_html=True)
+    info_box("<b>Ako čítať portfóliové riziko:</b> Ročná volatilita odhaduje veľkosť bežných výkyvov, max drawdown ukazuje najväčší pozorovaný prepad od vrcholu, VaR približuje hranicu zlého dňa a CVaR priemernú stratu v najhorších 5 % dní. Každá metrika opisuje iný aspekt rizika, preto ich čítaj spolu.")
+    info_box("<b>Limit modelu:</b> Inverzná volatilita nie je plná risk parity. Neoptimalizuje korelácie a nezaručuje rovnaký príspevok každého aktíva k riziku. Historické metriky nepredpovedajú budúce straty a výsledok nemusí zahŕňať dividendy, poplatky, dane ani menové konverzie.", kind="warning")
+
+# -----------------------------------------------------------------------------
+# TAB: Kvantitatívne nástroje
+# -----------------------------------------------------------------------------
+with tab_quant:
+    st.markdown("<div class='section-kicker'>Quantitative tools</div>", unsafe_allow_html=True)
+    st.subheader("Kvantitatívne nástroje")
+    feature_hero(
+        "Riziko a výnos z pohľadu štatistiky",
+        "Sortino počíta len s poklesmi, kĺzavé metriky ukazujú zmeny v čase, minimálna varianta hľadá najstabilnejšie zloženie "
+        "a efektívna hranica ukazuje, ako sa riziko a výnos kombinujú. Všetko je odvodené z histórie, nie z predpovede."
+    )
+
+    quant_pick = st.selectbox("Čo analyzovať", ["Portfólio"] + valid_tickers, key="quant_pick")
+    series = portfolio_returns if quant_pick == "Portfólio" else returns[quant_pick].dropna()
+
+    st.markdown("#### Sortino a rizikové čísla")
+    if len(series) < 30:
+        st.info("Na výpočet je potrebných aspoň 30 denných výnosov. Zvoľ dlhšie historické obdobie.")
+    else:
+        rf_daily = (risk_free / 100) / 252
+        excess = series - rf_daily
+        ann_excess = excess.mean() * 252
+        ann_vol_q = series.std(ddof=1) * np.sqrt(252)
+        downside = np.minimum(excess.to_numpy(dtype=float), 0.0)
+        downside_dev = float(np.sqrt(np.mean(downside ** 2)) * np.sqrt(252))
+        sharpe_q = ann_excess / ann_vol_q if ann_vol_q > 0 else np.nan
+        sortino_q = ann_excess / downside_dev if downside_dev > 0 else np.nan
+
+        q1, q2, q3, q4 = st.columns(4)
+        with q1:
+            kpi_card("Sortino ratio", fmt_num(sortino_q, 2), "Výnos na jednotku poklesového rizika", tone_for_sign(sortino_q))
+        with q2:
+            kpi_card("Sharpe ratio", fmt_num(sharpe_q, 2), "Výnos na jednotku celkovej volatility", tone_for_sign(sharpe_q))
+        with q3:
+            kpi_card("Poklesová volatilita", fmt_pct(downside_dev * 100), "Len záporné odchýlky od bezrizikovej sadzby", "neutral")
+        with q4:
+            kpi_card("Ročná volatilita", fmt_pct(ann_vol_q * 100), "Celkové kolísanie", "neutral")
+        info_box("<b>Sortino vs. Sharpe:</b> Sharpe považuje kladné aj záporné výkyvy za riziko. Sortino počíta len poklesy, takže lepšie hovorí o tom, či výnos stojí za straty. Ak je Sortino výrazne vyššie než Sharpe, väčšina kolísania bola smerom nahor.")
+
+        st.markdown("#### Kĺzavý Sharpe a kĺzavá volatilita")
+        window = st.slider("Okno (obchodné dni)", 21, 252, 63, 21, key="roll_window")
+        if len(series) > window:
+            roll_mean = series.rolling(window).mean() * 252
+            roll_std = series.rolling(window).std(ddof=1) * np.sqrt(252)
+            roll_sharpe = (roll_mean - risk_free / 100) / roll_std.replace(0, np.nan)
+            roll_df = pd.DataFrame({
+                "Dátum": series.index,
+                "Kĺzavý Sharpe": roll_sharpe.values,
+                "Kĺzavá volatilita (%)": roll_std.values * 100,
+            }).dropna()
+            r1, r2 = st.columns(2)
+            with r1:
+                fig = px.line(roll_df, x="Dátum", y="Kĺzavý Sharpe", title=f"Kĺzavý Sharpe · okno {window} dní")
+                fig.update_traces(line=dict(color=ACCENT, width=2.2))
+                st.plotly_chart(make_plotly_dark(fig, 360), use_container_width=True)
+                chart_note("Nad nulou znamená, že výnos v tom období prekračoval bezriziková sadzbu úmerne k riziku. Pod nulou znamená, že sa to nedarilo.")
+            with r2:
+                fig = px.line(roll_df, x="Dátum", y="Kĺzavá volatilita (%)", title=f"Kĺzavá volatilita · okno {window} dní")
+                fig.update_traces(line=dict(color=GOLD, width=2.2))
+                st.plotly_chart(make_plotly_dark(fig, 360), use_container_width=True)
+                chart_note("Rast kolísania znamená nervóznejšie obdobie. Krátke okno reaguje rýchlo, ale je hlučnejšie.")
+        else:
+            st.info("Okno je väčšie než dostupná história. Zvoľ menšie okno alebo dlhšie obdobie.")
+
+    st.markdown("#### Minimálna varianta portfólia")
+    clean_returns = returns[valid_tickers].dropna(how="any")
+    if len(valid_tickers) < 2:
+        st.info("Minimálna varianta potrebuje aspoň dva tituly vo watchlistu.")
+    elif len(clean_returns) < 60:
+        st.warning("Na výpočet kovariancií je potrebných aspoň 60 spoločných obchodných dní. Niektoré tituly sú kratšie, skús iné obdobie alebo menej tickerov.")
+    else:
+        cov_a = clean_returns.cov().values * 252
+        mu_a = clean_returns.mean().values * 252
+        w_mv = min_var_weights(cov_a)
+        mv_vol = float(np.sqrt(w_mv @ cov_a @ w_mv)) * 100
+        mv_ret = float(w_mv @ mu_a) * 100
+        eq_w = np.full(len(valid_tickers), 1.0 / len(valid_tickers))
+        eq_vol = float(np.sqrt(eq_w @ cov_a @ eq_w)) * 100
+        eq_ret = float(eq_w @ mu_a) * 100
+
+        m1, m2, m3 = st.columns(3)
+        with m1:
+            kpi_card("Volatilita minimálnej varianty", fmt_pct(mv_vol), "Historické kolísanie celého zloženia", "neutral")
+        with m2:
+            kpi_card("Výnos minimálnej varianty", fmt_pct_signed(mv_ret), "Historický ročný výnos", tone_for_sign(mv_ret))
+        with m3:
+            kpi_card("Porovnanie: rovnaká váha", f"{fmt_pct(eq_vol)} / {fmt_pct_signed(eq_ret)}", "Volatilita / výnos", "neutral")
+
+        mv_table = pd.DataFrame({
+            "Ticker": valid_tickers,
+            "Váha (%)": w_mv * 100,
+        }).sort_values("Váha (%)", ascending=False)
+        mv_left, mv_right = st.columns([1, 1])
+        with mv_left:
+            st.dataframe(mv_table.style.format({"Váha (%)": "{:.2f}%"}), use_container_width=True, hide_index=True)
+        with mv_right:
+            fig = px.bar(mv_table, x="Ticker", y="Váha (%)", title="Váhy minimálnej varianty")
+            fig.update_traces(marker_color=ACCENT)
+            st.plotly_chart(make_plotly_dark(fig, 320), use_container_width=True)
+        chart_note("Váha 0 % neznamená, že titul je zlý. Znamená, že v minulosti jeho zaradenie nezvýšilo stabilitu celku. Zloženie je citlivé na obdobie.")
+        info_box("<b>Pozor:</b> Minimálna varianta z histórie nie je odporúčané zloženie. Ak sa korelácie alebo volatility v budúcnosti zmenia, výsledok bude iný.", kind="warning")
+
+    st.markdown("#### Efektívna hranica (náhodné portfóliá)")
+    if len(valid_tickers) < 2 or len(clean_returns) < 60:
+        st.info("Efektívna hranica potrebuje aspoň dva tituly a 60 spoločných obchodných dní.")
+    else:
+        n_port = st.select_slider("Počet náhodných portfólií", options=[500, 1000, 2000, 4000], value=2000, key="frontier_n")
+        n_assets = len(valid_tickers)
+        rng_f = np.random.default_rng(11)
+        W = rng_f.dirichlet(np.ones(n_assets), size=n_port)
+        f_ret = W @ mu_a
+        f_vol = np.sqrt(np.einsum("ij,jk,ik->i", W, cov_a, W))
+        f_sharpe = (f_ret - risk_free / 100) / np.where(f_vol > 0, f_vol, np.nan)
+        frontier_df = pd.DataFrame({
+            "Volatilita (%)": f_vol * 100,
+            "Výnos (% p. a.)": f_ret * 100,
+            "Sharpe": f_sharpe,
+        }).dropna()
+        fig = px.scatter(frontier_df, x="Volatilita (%)", y="Výnos (% p. a.)", color="Sharpe",
+                         color_continuous_scale=[RED, GOLD, ACCENT], opacity=0.6,
+                         title="Náhodné portfóliá z tvojich tickerov (historicky)")
+        fig.add_trace(go.Scatter(x=[mv_vol], y=[mv_ret], mode="markers", name="Minimálna varianta",
+                                 marker=dict(size=16, symbol="star", color=GOLD, line=dict(color=TEXT, width=1))))
+        fig.add_trace(go.Scatter(x=[eq_vol], y=[eq_ret], mode="markers", name="Rovnaká váha",
+                                 marker=dict(size=12, symbol="diamond", color=ACCENT_2, line=dict(color=TEXT, width=1))))
+        fig.update_layout(xaxis_title="Ročná volatilita (%)", yaxis_title="Ročný výnos (%)")
+        st.plotly_chart(make_plotly_dark(fig, 480), use_container_width=True)
+        chart_note("Každý bod je jedno náhodne zložené portfólio. Body vľavo hore dávali v minulosti vyšší výnos pri nižšom riziku. Hviezdička je minimálna varianta, kosoštvorec rovnaká váha.")
+        info_box("<b>Čo je efektívna hranica:</b> Je to hranica portfólií, ktoré pri danom riziku dávali najvyšší výnos. Tu ju len ilustrujeme náhodnými váhami, nie skutočnou optimalizáciou. Náhodné body preto hranicu iba približujú a výsledok je závislý na histórii.", kind="warning")
 
 # -----------------------------------------------------------------------------
 # TAB: Monte Carlo (vlastná záložka)
@@ -1774,7 +2107,8 @@ with tab_portfolio:
 with tab_mc:
     st.markdown("<div class='section-kicker'>Scenario simulation</div>", unsafe_allow_html=True)
     st.subheader("Monte Carlo: možné scenáre, nie predpoveď")
-    st.markdown(
+    feature_hero(
+        "Čo sa mohlo stať, ak by sa minulé výnosy zopakovali v inom poradí",
         "Simulácia opakovane náhodne vyberá historické denné výnosy a skladá z nich veľa možných ciest hodnoty. "
         "Výsledok ukazuje rozpätie možností na základe minulosti, nie to, čo sa stane."
     )
@@ -1807,9 +2141,9 @@ with tab_mc:
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=x_days, y=high_band, mode="lines", line=dict(width=0), showlegend=False, name="95. percentil portfólia"))
         fig.add_trace(go.Scatter(x=x_days, y=low_band, mode="lines", line=dict(width=0), fill="tonexty",
-                                 fillcolor="rgba(140,168,255,.15)", name="Portfólio · rozpätie 5.–95. percentil"))
+                                 fillcolor="rgba(140,168,255,.18)", name="Portfólio · rozpätie 5.–95. percentil"))
         for j in range(min(60, mc_sims)):
-            fig.add_trace(go.Scatter(x=x_days, y=simulated_paths[:, j], mode="lines", line=dict(color="rgba(84,225,193,.12)", width=1), showlegend=False))
+            fig.add_trace(go.Scatter(x=x_days, y=simulated_paths[:, j], mode="lines", line=dict(color="rgba(84,225,193,.14)", width=1), showlegend=False))
         fig.add_trace(go.Scatter(x=x_days, y=median_path, mode="lines", line=dict(color=ACCENT, width=3), name="Portfólio · medián"))
 
         sp500_final_values = np.array([])
@@ -1914,9 +2248,56 @@ with tab_mc:
             st.download_button("⬇ Stiahnuť Monte Carlo porovnanie do CSV",
                                data=summary_df.to_csv(index=False).encode("utf-8-sig"),
                                file_name="oliver_leso_monte_carlo_comparison.csv", mime="text/csv")
-        st.markdown("<div class='warning-box'><b>Ako interpretovať:</b> Medián je prostredná hodnota nasimulovaných scenárov, nie predpoveď. S&P 500 slúži ako porovnávací benchmark. Individuálne akcie sú simulované samostatne, takže druhý graf neuchováva historické korelácie medzi akciami. Model nezachytáva spoľahlivo zmenu trhového režimu, budúce nečakané udalosti, poplatky, dane ani menové konverzie.</div>", unsafe_allow_html=True)
+        info_box("<b>Ako interpretovať:</b> Medián je prostredná hodnota nasimulovaných scenárov, nie predpoveď. S&P 500 slúži ako porovnávací benchmark. Individuálne akcie sú simulované samostatne, takže druhý graf neuchováva historické korelácie medzi akciami. Model nezachytáva spoľahlivo zmenu trhového režimu, budúce nečakané udalosti, poplatky, dane ani menové konverzie.", kind="warning")
     else:
         st.warning("Na Monte Carlo simuláciu je potrebných aspoň 20 dostupných historických denných výnosov portfólia.")
+
+# -----------------------------------------------------------------------------
+# TAB: Sezónnosť
+# -----------------------------------------------------------------------------
+with tab_season:
+    st.markdown("<div class='section-kicker'>Seasonality</div>", unsafe_allow_html=True)
+    st.subheader("Sezónnosť: ktoré mesiace bývali silnejšie")
+    feature_hero(
+        "Opakuje sa niečo v kalendári?",
+        "Pre zvolený titul ukazuje priemerný mesačný výnos v jednotlivých kalendárnych mesiacoch naprieč rokmi "
+        "a podiel rokov, kedy bol daný mesiac kladný. Ak je dát málo, výsledok je väčšinou náhodný."
+    )
+    season_ticker = st.selectbox("Ticker", valid_tickers, key="season_ticker")
+    season_close = price_df[season_ticker].dropna()
+    if len(season_close) < 60:
+        st.info("Na sezónnosť je potrebných aspoň niekoľko mesiacov dát. Zvýš historické obdobie v nastaveniach.")
+    else:
+        monthly = season_close.groupby(season_close.index.to_period("M")).last()
+        mret = monthly.pct_change().dropna() * 100
+        if mret.empty:
+            st.info("Pre zvolený titul sa nepodarilo vypočítať mesačné výnosy.")
+        else:
+            idx = mret.index.to_timestamp()
+            sdf = pd.DataFrame({"Mesiac": idx.month, "Výnos": mret.values})
+            avg_m = sdf.groupby("Mesiac")["Výnos"].mean().reindex(range(1, 13))
+            pos_m = sdf.groupby("Mesiac")["Výnos"].apply(lambda s: (s > 0).mean() * 100).reindex(range(1, 13))
+            cnt_m = sdf.groupby("Mesiac")["Výnos"].count().reindex(range(1, 13))
+            season_df = pd.DataFrame({
+                "Mesiac": MONTHS_SK,
+                "Priemerný výnos (%)": avg_m.values,
+                "Kladných rokov (%)": pos_m.values,
+                "Počet pozorovaní": cnt_m.fillna(0).astype(int).values,
+            })
+            fig = px.bar(season_df, x="Mesiac", y="Priemerný výnos (%)", color="Priemerný výnos (%)",
+                         color_continuous_scale=[RED, "#64748B", ACCENT],
+                         title=f"Priemerný mesačný výnos · {season_ticker}")
+            fig.update_layout(coloraxis_showscale=False)
+            st.plotly_chart(make_plotly_dark(fig, 420), use_container_width=True)
+            chart_note("Každý stĺpec je priemer výnosov daného mesiaca cez všetky dostupné roky. Pri málo rokoch je stĺpec ovplyvnený jedným extrémnym mesiacom.")
+            st.dataframe(
+                season_df.style.format({"Priemerný výnos (%)": "{:+.2f}%", "Kladných rokov (%)": "{:.0f}%"}, na_rep="—"),
+                use_container_width=True, hide_index=True,
+            )
+            if season_df["Počet pozorovaní"].max() < 5:
+                info_box("<b>Málo dát:</b> Každý mesiac má menej než 5 pozorovaní. Vzor z takého počtu rokov nie je spoľahlivý. Zvýš obdobie na 5 rokov alebo viac.", kind="warning")
+            else:
+                info_box("<b>Na čo si dať pozor:</b> Sezónny vzor môže byť náhodný a nemusí sa zopakovať. Porovnaj ho s celkovým priemerom a nebuduj naň rozhodnutie.", kind="warning")
 
 # -----------------------------------------------------------------------------
 # TAB: fundamentals
@@ -1994,7 +2375,7 @@ with tab_swot:
     st.markdown("<div class='section-kicker'>Company-specific review</div>", unsafe_allow_html=True)
     st.subheader("SWOT analýza vybranej spoločnosti")
     st.markdown("Vyber ľubovoľný načítaný ticker. SWOT kombinuje fundamentálne a technické ukazovatele s nedávnymi správami pre tento konkrétny ticker.")
-    st.markdown("<div class='warning-box'><b>Ako funguje mediálna časť SWOT:</b> aplikácia používa titulok a krátky popis z RSS feedu. Kľúčové slová len navrhnú kategóriu. Nie je to plnohodnotné prečítanie článku ani spoľahlivý AI sentiment; pred rozhodnutím otvor zdroj a over kontext.</div>", unsafe_allow_html=True)
+    info_box("<b>Ako funguje mediálna časť SWOT:</b> aplikácia používa titulok a krátky popis z RSS feedu. Kľúčové slová len navrhnú kategóriu. Nie je to plnohodnotné prečítanie článku ani spoľahlivý AI sentiment; pred rozhodnutím otvor zdroj a over kontext.", kind="warning")
 
     swot_ticker = st.selectbox("Firma / ticker pre SWOT", valid_tickers, key="swot_ticker")
     swot_row = metrics.loc[metrics["Ticker"] == swot_ticker].iloc[0]
@@ -2056,6 +2437,87 @@ with tab_swot:
     st.caption(f"Cenové a fundamentálne údaje: Yahoo Finance cez yfinance, snapshot {fetched_at} (Europe/Prague). SWOT prahy aj klasifikácia správ sú orientačné a môžu sa mýliť.")
 
 # -----------------------------------------------------------------------------
+# TAB: Poznámky (uložené v prehliadači)
+# -----------------------------------------------------------------------------
+with tab_notes:
+    st.markdown("<div class='section-kicker'>Personal notes</div>", unsafe_allow_html=True)
+    st.subheader("Moje poznámky k firmám")
+    feature_hero(
+        "Zapíš si, prečo firmu sleduješ",
+        f"Poznámky sa ukladajú do tvojho prehliadača (cookie), najviac {NOTE_MAX_CHARS} znakov na firmu. "
+        "Nie sú zdieľané s nikým a na serveri sa neukladajú. Ak zmeníš prehliadač alebo použiješ súkromné okno, uvidíš ich až pri návrate do pôvodného."
+    )
+
+    notes_store: dict[str, str] = st.session_state.setdefault("notes_store", {})
+    for t in valid_tickers:
+        key = f"note_{t}"
+        if key not in st.session_state:
+            st.session_state[key] = notes_store.get(t, "")
+        note_name = safe_name(infos.get(t, {}), t)
+        st.text_area(
+            f"{t} · {note_name}",
+            key=key,
+            max_chars=NOTE_MAX_CHARS,
+            height=90,
+            placeholder="Prečo firmu sleduješ? Čo by ju mohlo ovplyvniť? Aká je tvoja téza?",
+        )
+
+    for t in valid_tickers:
+        current_note = str(st.session_state.get(f"note_{t}", "")).strip()
+        if current_note:
+            notes_store[t] = current_note[:NOTE_MAX_CHARS]
+        else:
+            notes_store.pop(t, None)
+
+    clean_json = json.dumps({k: notes_store[k] for k in sorted(notes_store)}, ensure_ascii=False)
+    if clean_json != st.session_state.get("_last_saved_notes"):
+        encoded_notes = urllib.parse.quote(clean_json)
+        if len(encoded_notes) > 3800:
+            st.warning("Poznámky sú už príliš dlhé na uloženie v prehliadači. Skráť ich alebo niektoré odstráň.")
+        else:
+            cookie_manager.set(
+                NOTES_COOKIE,
+                encoded_notes,
+                expires_at=datetime.now() + timedelta(days=365),
+                key="save_notes",
+            )
+            st.session_state["_last_saved_notes"] = clean_json
+    st.caption(f"Uložených poznámok: {len(notes_store)}")
+
+# -----------------------------------------------------------------------------
+# TAB: Export (HTML report, tlač do PDF)
+# -----------------------------------------------------------------------------
+with tab_export:
+    st.markdown("<div class='section-kicker'>Export</div>", unsafe_allow_html=True)
+    st.subheader("Export prehľadu")
+    feature_hero(
+        "Jeden súbor so všetkým dôležitým",
+        "Stiahne HTML report s tabuľkou watchlistu a tvojimi poznámkami. Otvor ho v prehliadači a vytlač cez Ctrl+P "
+        "(alebo Cmd+P) ako PDF. Nie je potrebná žiadna ďalšia knižnica."
+    )
+    report_html = build_report_html(
+        metrics,
+        st.session_state.get("notes_store", {}),
+        base,
+        fetched_at,
+        benchmark,
+    )
+    st.download_button(
+        "⬇ Stiahnuť HTML report",
+        data=report_html.encode("utf-8"),
+        file_name=f"oliver_leso_report_{datetime.now():%Y%m%d_%H%M}.html",
+        mime="text/html",
+        use_container_width=True,
+    )
+    st.markdown("#### Náhľad obsahu")
+    preview_cols = ["Ticker", "Spoločnosť", "Cena", "Mena", "1Y (%)", "3M (%)", "Volatilita (%)", "Technické skóre"]
+    st.dataframe(metrics[preview_cols].style.format(
+        {"Cena": "{:.2f}", "1Y (%)": "{:+.2f}%", "3M (%)": "{:+.2f}%", "Volatilita (%)": "{:.2f}%", "Technické skóre": "{:.2f}"},
+        na_rep="—",
+    ), use_container_width=True, hide_index=True)
+    st.caption("Report obsahuje rovnaké čísla ako tabuľka watchlistu a tvoje poznámky. Neobsahuje grafy, aby bol súbor ľahký.")
+
+# -----------------------------------------------------------------------------
 # TAB: glossary
 # -----------------------------------------------------------------------------
 with tab_glossary:
@@ -2064,6 +2526,7 @@ with tab_glossary:
     glossary = [
         ("Ticker", "Ticker je burzový symbol, ktorým identifikuješ obchodovaný nástroj. Napríklad AAPL označuje akcie Apple a SPY ETF sledujúci index S&P 500.", "Vždy skontroluj, či symbol označuje správnu firmu, burzu a menu. Jedna firma môže mať viac symbolov podľa burzy alebo triedy akcií.", "Ak zadáš ASML, aplikácia sa pokúsi načítať tento symbol z Yahoo Finance. Pre európsku kotáciu môže byť potrebný symbol s príponou burzy.", "Ticker sám osebe nehovorí nič o kvalite ani o tom, či je akcia lacná."),
         ("Výnos (1D / 1M / 3M / 6M / 1Y)", "Percentuálna zmena ceny medzi začiatkom a koncom zvoleného obdobia. Horizont sa počíta v obchodných dňoch, nie presných kalendárnych mesiacoch.", "Kladné číslo znamená, že cena vzrástla; záporné, že klesla. Pri porovnávaní používaj rovnaký horizont pre všetky akcie.", "Ak cena stúpne zo 100 na 110, výnos je +10,00 %. Ak potom klesne zo 110 na 100, strata z vrcholu je približne −9,09 %, nie −10 %.", "Ide o historický pohyb ceny, nie sľub budúceho výnosu. Nezahŕňa tvoje poplatky, dane ani celkový výnos z dividend."),
+        ("Výkonnosť voči benchmarku", "Rozdiel medzi výnosom titulu a výnosom zvoleného indexu za rovnaké obdobie, v percentuálnych bodoch.", "Kladný rozdiel znamená, že titul porazil index. Záporný, že zaostal.", "Ak akcia vzrástla o 12 % a index o 8 %, rozdiel je +4 percentuálne body.", "Jedno obdobie môže byť nereprezentatívne. Porovnávaj aj dlhšie obdobia a riziko."),
         ("Ročná volatilita", "Odhad veľkosti kolísania denných výnosov prepočítaný na ročné meradlo. V modeli sa denná smerodajná odchýlka násobí odmocninou z približne 252 obchodných dní.", "Vyššie číslo znamená, že cena historicky kolísala viac. Nehovorí však, či pohyby boli prevažne nahor alebo nadol.", "Ak má akcia volatilitu 40,00 % a iná 15,00 %, prvá historicky vykazovala väčšie pohyby. To automaticky neznamená horšiu investíciu.", "Volatilita vychádza z minulosti a môže sa rýchlo zmeniť. Nejde o maximálnu možnú stratu."),
         ("RSI (14)", "Relative Strength Index je oscilátor, ktorý porovnáva priemerné nedávne rastové a klesajúce pohyby za 14 období. Pohybuje sa od 0 do 100.", "Hodnota nad 70 sa často označuje ako prekúpená a pod 30 ako prepredaná. Ber to ako upozornenie na silný pohyb, nie ako príkaz obchodovať opačným smerom.", "RSI 75,00 znamená, že posledné pohyby boli silno naklonené rastu. V silnom rastovom trende môže RSI zostať nad 70 dlho.", "RSI môže dávať falošné signály a treba ho posudzovať spolu s trendom, úrovňami ceny a fundamentmi."),
         ("SMA 20 / 50 / 200", "SMA je jednoduchý kĺzavý priemer zatváracích cien za posledných 20, 50 alebo 200 obchodných dní.", "Cena nad SMA môže podporovať rastový pohľad; cena pod SMA môže signalizovať slabší trend. SMA 200 reaguje pomalšie než SMA 20.", "Ak je cena nad SMA 50 a SMA 50 je nad SMA 200, technickí analytici to často považujú za usporiadanie podporujúce rastový trend.", "Kĺzavé priemery zaostávajú za cenou a nepredpovedajú obrat."),
@@ -2081,7 +2544,11 @@ with tab_glossary:
         ("Dividendový výnos", "Ročná dividenda na akciu vydelená aktuálnou cenou.", "Vyšší výnos môže byť príťažlivý pre príjem, ale porovnávaj aj schopnosť firmy dividendu financovať.", "Ak akcia stojí 100,00 € a ročná dividenda je 4,00 €, výnos je 4,00 %.", "Dividenda nie je garantovaná a cena akcie môže klesnúť viac než výplata dividendy."),
         ("Korelácia", "Štatistika od −1 do +1, ktorá ukazuje, ako sa dva súbory výnosov historicky pohybovali spolu.", "+1 znamená pohyb takmer rovnakým smerom, 0 slabý lineárny vzťah a −1 opačný pohyb.", "Ak majú dve akcie koreláciu 0,20, ich výnosy mali relatívne slabý lineárny vzťah.", "Korelácia nie je príčinnosť a v krízach sa vzťahy môžu meniť."),
         ("Sharpe ratio", "Pomer historického výnosu nad bezrizikovú sadzbu k volatilite portfólia.", "Vyššia hodnota znamená viac historického nadvýnosu na jednotku kolísania.", "Sharpe 1,00 neznamená 100 % zisk. Je to pomer rizika a nadvýnosu, nie percentuálny výnos.", "Je citlivý na obdobie a zvolenú bezrizikovú sadzbu."),
-        ("CAGR / anualizovaný výnos", "CAGR je zložená ročná miera rastu medzi počiatočnou a konečnou hodnotou.", "Pomáha porovnávať rôzne dlhé obdobia, no nezobrazuje cestu medzi začiatkom a koncom ani medzitýnne prepady.", "CAGR 8,00 % znamená, že hodnota rástla zloženým tempom približne 8,00 % ročne.", "V aplikácii ide o historický odhad z denných výnosov; krátke obdobia ho môžu skresliť."),
+        ("Sortino ratio", "Podobný ako Sharpe ratio, ale do rizika počíta len poklesy pod bezrizikovú sadzbu, nie kladné kolísanie.", "Vyššia hodnota znamená viac výnosu na jednotku poklesového rizika. Je užitočný, keď sa chceš pozrieť hlavne na straty.", "Sortino 1,50 znamená, že priemerný nadvýnos pripadal na každú jednotku poklesovej volatility 1,50.", "Ako Sharpe je to štatistika minulosti a silno závisí od obdobia a bezrizikovej sadzby."),
+        ("Kĺzavý Sharpe a kĺzavá volatilita", "Sharpe a volatilita počítané v posuvnom okne (napr. 63 obchodných dní), takže vidíš, ako sa menili v čase.", "Ak kĺzavá volatilita rastie, portfólio sa stáva nervóznejším. Kĺzavý Sharpe ukazuje, či výnos držal krok s rizikom.", "Okno 63 dní zodpovedá približne trom mesiacom obchodovania.", "Krátke okno je hlučné, dlhé reaguje pomaly. Výsledok závisí od zvoleného okna."),
+        ("Minimálna varianta", "Portfólio s najnižším historickým kolísaním, vypočítané z kovariancií vybraných titulov. Váhy sú len kladné a spolu tvoria 100 %.", "Ukazuje, ako by vyzeralo najstabilnejšie zloženie z tvojich tickerov. Nezohľadňuje výnos, len riziko.", "Ak minimálna varianta vyjde s 0 % pri nejakej akcii, model ju v minulosti nepotreboval na zníženie kolísania.", "Je citlivá na obdobie a na to, ktoré tituly sú vo watchliste. Nie je to odporúčanie na nákup."),
+        ("Efektívna hranica (náhodné portfóliá)", "Graf tisícok náhodne zostavených portfólií z tvojich tickerov: na osi x je riziko, na osi y očakávaný výnos z minulosti, farba ukazuje Sharpe.", "Portfóliá vľavo hore dávali v minulosti lepší výnos pri nižšom riziku. Hviezdička označuje minimálnu variantu.", "Ak je najlepší bod vpravo dole, znamená to vyššie riziko za vyšší výnos.", "Je to len náhodný výber váh, nie skutočná optimalizácia. Minulé výnosy sa v budúcnosti nemusia zopakovať."),
+        ("Sezónnosť", "Priemerný výnos akcie v jednotlivých kalendárnych mesiacoch naprieč rokmi, plus podiel rokov, kedy bol mesiac kladný.", "Ukazuje, či sa niektoré mesiace opakovane správali lepšie alebo horšie. Pri krátkom období je počet pozorovaní malý.", "Ak marec mal priemer +2 % a len 3 z 5 rokov kladný výnos, je to skôr šum než pravidlo.", "Historický vzor nemusí platiť v budúcnosti a s málo rokmi je silne náhodný."),
         ("Max drawdown (maximálny prepad)", "Najväčší percentuálny pokles od predchádzajúceho maxima hodnoty po nasledujúce minimum.", "Ukazuje hĺbku historického prepadu, ktorý investor musel zvládnuť. Nie je to to isté ako volatilita.", "Ak portfólio klesne zo 100 000 € na 70 000 €, prepad od vrcholu je −30,00 %.", "Budúci prepad môže byť hlbší. Na návrat zo straty 30,00 % je potrebný rast približne 42,86 %."),
         ("VaR 95 % a CVaR 95 %", "Historický jednodňový VaR 95 % odhaduje hranicu straty, ktorú historické výnosy prekročili približne v najhorších 5 % dní. CVaR priemeruje výnosy v tejto najhoršej časti.", "VaR odpovedá na otázku, aká strata je hranicou zlého 5 % dňa. CVaR, aká bola priemerná strata v najhorších dňoch.", "Ak VaR vyjde 500,00 € pri kapitále 10 000,00 €, nejde o maximálnu stratu.", "Odhady závisia od historického obdobia a nezachytávajú spoľahlivo extrémne udalosti."),
         ("HHI a efektívny počet pozícií", "HHI je súčet druhých mocnín percentuálnych váh pozícií. Efektívny počet je 1 delené súčtom druhých mocnín váh vyjadrených ako desatinné čísla.", "Vyšší HHI znamená koncentrovanejší model. Efektívny počet hovorí, koľko rovnako veľkých pozícií by zodpovedalo danej koncentrácii.", "Pri štyroch rovnomerne vážených akciách je efektívny počet 4,00.", "Počet tickerov nadhodnocuje diverzifikáciu, ak vlastnia podobné firmy alebo reagujú na rovnaké riziká."),
@@ -2098,7 +2565,7 @@ with tab_glossary:
             st.markdown(f"**Na čo si dať pozor:** {limitation}")
 
     st.markdown("---")
-    st.markdown("<div class='warning-box'><b>Dôležité upozornenie</b><br>Táto aplikácia je vzdelávací analytický nástroj. Údaje môžu byť oneskorené, neúplné alebo chybné. Výsledky nezohľadňujú automaticky poplatky, dane, spread, likviditu ani individuálnu situáciu investora. Skóre, technické indikátory, historické štatistiky a simulácie nie sú investičným odporúčaním ani zárukou budúcich výsledkov.</div>", unsafe_allow_html=True)
+    info_box("<b>Dôležité upozornenie</b><br>Táto aplikácia je vzdelávací analytický nástroj. Údaje môžu byť oneskorené, neúplné alebo chybné. Výsledky nezohľadňujú automaticky poplatky, dane, spread, likviditu ani individuálnu situáciu investora. Skóre, technické indikátory, historické štatistiky a simulácie nie sú investičným odporúčaním ani zárukou budúcich výsledkov.", kind="warning")
 
 st.markdown("---")
 st.markdown(
